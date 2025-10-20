@@ -1,0 +1,27 @@
+# About the Document
+Definition of Done (DoD) is the exit criteria to determine whether a product backlog item (PBI) is complete.
+DoD is a checklist of features and activities, for example, writing code, unit testing, integration testing,
+design documents, etc. that demonstrates that the PBI has been completed and can be marked as Done.
+DoD is crucial to a scrum team. It is the key to delivering quality product. DoD also serves as a good
+reporting mechanism for scrum team members. It helps to say that “This feature is Done”. Using DoD as
+a reference, a team member can effectively update other team members and product owner of the state
+of a PBI.
+DoD may vary from one scrum team to another, but must be consistent within one team. To ensure
+consistent quality, it is important for a scrum team to identify its own DoD and stick with it. Any alteration
+of DoD should be communicated to the team members immediately.
+
+1 Definition of Done criteria
+This section defines a list of items that make up the DoD checklist for the team. 
+
+ Produced artifact (code/document) for the PBI
+
+ Requirements mentioned in PBI are satisfied
+ Acceptance criteria(s) for PBI are satisfied
+ Unit tests performed and passed
+ Integration tests performed and passed
+ PBI artifact checked in into version control
+ Project builds without errors
+ Peer code review performed
+ Design Document updated
+ Test Document updated
+ End-User documentation updated
