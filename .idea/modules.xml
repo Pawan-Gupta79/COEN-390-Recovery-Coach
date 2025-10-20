@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/Smart_Gym.iml" filepath="$PROJECT_DIR$/.idea/modules/Smart_Gym.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Smart_Gym.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Smart_Gym.app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Smart_Gym.app.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Smart_Gym.app.androidTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Smart_Gym.app.main.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Smart_Gym.app.main.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/Smart_Gym.app.unitTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/Smart_Gym.app.unitTest.iml" />
+    </modules>
+  </component>
+</project>
