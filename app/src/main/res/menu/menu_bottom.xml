@@ -1,0 +1,8 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:id="@+id/nav_dashboard" android:title="Dashboard"
+        android:icon="@android:drawable/ic_menu_view"/>
+    <item android:id="@+id/nav_sessions" android:title="Sessions"
+        android:icon="@android:drawable/ic_menu_recent_history"/>
+    <item android:id="@+id/nav_settings" android:title="Settings"
+        android:icon="@android:drawable/ic_menu_manage"/>
+</menu>
