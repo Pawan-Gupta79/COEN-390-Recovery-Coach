@@ -1,0 +1,13 @@
+<resources>
+    <string name="app_name">Smart Gym</string>
+    <string name="title_scan">Find your Sensor</string>
+    <string name="connect">Connect</string>
+    <string name="disconnect">Disconnect</string>
+    <string name="start_workout">Start Workout</string>
+    <string name="stop">Stop</string>
+    <string name="hr_bpm">%1$d bpm</string>
+    <string name="device_unavailable">Device unavailable</string>
+    <string name="scanning">Scanning…</string>
+    <string name="scan">Scan</string>
+    <string name="fake_mode">Use Fake Sensor</string>
+</resources>
