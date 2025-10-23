@@ -14,14 +14,20 @@ of DoD should be communicated to the team members immediately.
 This section defines a list of items that make up the DoD checklist for the team. 
 
  Produced artifact (code/document) for the PBI
+In the GitHub repository
 
  Requirements mentioned in PBI are satisfied
  Acceptance criteria(s) for PBI are satisfied
  Unit tests performed and passed
+Performed test. UI is missing the "start workout" and "Check progress" button. Everything else works.
  Integration tests performed and passed
+Performed test. UI is missing the "start workout" and "Check progress" button. Everything else works.
  PBI artifact checked in into version control
  Project builds without errors
+Done
  Peer code review performed
+Done
  Design Document updated
+Done
  Test Document updated
  End-User documentation updated
