@@ -22,9 +22,10 @@ android {
         }
     }
 
+    // ✅ Updated to Java 17 (was 11)
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     buildFeatures {
@@ -35,8 +36,9 @@ android {
 
 dependencies {
     implementation libs.core.ktx
-    implementation 'com.google.android.material:material:1.13.0'   // ← force Material 3
-    // remove: implementation libs.material
+
+
+    implementation 'com.google.android.material:material:1.13.0'
 
     implementation libs.appcompat
     implementation libs.activity

@@ -1,5 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- App -->
     <string name="app_name">Smart Gym</string>
+
+    <!-- General / BLE / Scan -->
     <string name="title_scan">Find your Sensor</string>
     <string name="connect">Connect</string>
     <string name="disconnect">Disconnect</string>
@@ -10,4 +14,51 @@
     <string name="scanning">Scanning…</string>
     <string name="scan">Scan</string>
     <string name="fake_mode">Use Fake Sensor</string>
+
+    <!-- Snackbars / feedback -->
+    <string name="connected_snackbar">Connected</string>
+    <string name="disconnected_snackbar">Disconnected</string>
+    <string name="fake_on">Fake sensor enabled</string>
+    <string name="fake_off">Fake sensor disabled</string>
+
+    <!-- Connection states -->
+    <string name="state_disconnected">Disconnected</string>
+    <string name="state_connecting">Connecting…</string>
+    <string name="state_connected">Connected</string>
+    <string name="state_reconnecting">Reconnecting…</string>
+
+    <!-- Confirm / dialogs -->
+    <string name="confirm_disconnect_title">Disconnect?</string>
+    <string name="confirm_disconnect_msg">Are you sure you want to disconnect from this device?</string>
+
+    <!-- Stop Scan Dialog -->
+    <string name="stop_scan_title">Stop scanning?</string>
+    <string name="stop_scan_msg">A scan is in progress. Stop scanning?</string>
+    <string name="keep_scanning">Keep scanning</string>
+
+    <!-- Placeholder BLE error -->
+    <string name="ble_placeholder_error_title">Bluetooth unavailable</string>
+    <string name="ble_placeholder_error_msg">We couldn’t access Bluetooth right now. Please check permissions or try again.</string>
+
+    <!-- Login -->
+    <string name="login_title">Welcome back</string>
+    <string name="login_email_hint">Email</string>
+    <string name="login_password_hint">Password</string>
+    <string name="login_button">Log in</string>
+    <string name="login_demo_hint">Demo: user@example.com / password123</string>
+    <string name="err_invalid_email">Please enter a valid email.</string>
+    <string name="err_invalid_password">Password must be at least 6 characters.</string>
+    <string name="err_fix_inputs">Please fix the highlighted fields.</string>
+    <string name="err_bad_credentials">Invalid email or password.</string>
+    <string name="login_success">Login successful!</string>
+    <string name="demo_email">user@example.com</string>
+    <string name="demo_pass">password123</string>
+
+    <!-- Settings / prefs -->
+    <string name="auto_reconnect">Auto-reconnect to last device</string>
+    <string name="theme_follows_system">Theme follows system. More options soon.</string>
+    <string name="logout">Log out</string>
+    <string name="logout_done">You have been logged out.</string>
+    <string name="auto_reconnect_on">Auto-reconnect enabled</string>
+    <string name="auto_reconnect_off">Auto-reconnect disabled</string>
 </resources>
