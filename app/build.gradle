@@ -13,6 +13,7 @@ android {
         versionCode 2
         versionName "1.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildFeatures { viewBinding true }
     }
 
     buildTypes {
@@ -22,7 +23,6 @@ android {
         }
     }
 
-    // ✅ Updated to Java 17 (was 11)
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -36,6 +36,10 @@ android {
 
 dependencies {
     implementation libs.core.ktx
+
+    implementation "androidx.navigation:navigation-fragment:2.7.7"
+    implementation "androidx.navigation:navigation-ui:2.7.7"
+    implementation "com.google.android.material:material:1.12.0"
 
 
     implementation 'com.google.android.material:material:1.13.0'
@@ -51,6 +55,8 @@ dependencies {
     implementation libs.lifecycle.livedata
 
     implementation libs.room.runtime
+    implementation libs.navigation.fragment
+    implementation libs.navigation.ui
     annotationProcessor libs.room.compiler
 
     implementation libs.work.runtime
@@ -61,4 +67,6 @@ dependencies {
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
+
+
 }

@@ -3,33 +3,39 @@ package com.team11.smartgym.data;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-public class SessionManager {
-    private static final String PREF = "smartgym_prefs";
-    private static final String KEY_LOGGED_IN = "logged_in";
-    private static final String KEY_EMAIL = "email";
+import androidx.annotation.Nullable;
 
-    private final SharedPreferences sp;
+/** Central session helper (single source of truth). */
+public class SessionManager {
+
+    private static final String FILE = "smart_gym_session";
+    private static final String KEY_LOGGED_IN_EMAIL = "logged_in_email";
+
+    private final SharedPreferences prefs;
 
     public SessionManager(Context ctx) {
-        sp = ctx.getSharedPreferences(PREF, Context.MODE_PRIVATE);
+        prefs = ctx.getSharedPreferences(FILE, Context.MODE_PRIVATE);
     }
 
-    public void setLoggedIn(String email) {
-        sp.edit()
-                .putBoolean(KEY_LOGGED_IN, true)
-                .putString(KEY_EMAIL, email)
-                .apply();
-    }
-
+    /** Returns true if a user email is stored. */
     public boolean isLoggedIn() {
-        return sp.getBoolean(KEY_LOGGED_IN, false);
+        return prefs.contains(KEY_LOGGED_IN_EMAIL);
     }
 
+    /** Persist logged-in user email (or any non-empty value). */
+    public void setLoggedIn(String email) {
+        prefs.edit().putString(KEY_LOGGED_IN_EMAIL, email == null ? "" : email).apply();
+    }
+
+    /** Clear session completely. */
+    public void clear() {
+        prefs.edit().remove(KEY_LOGGED_IN_EMAIL).apply();
+    }
+
+    @Nullable
     public String getEmail() {
-        return sp.getString(KEY_EMAIL, "");
-    }
-
-    public void logout() {
-        sp.edit().clear().apply();
+        String v = prefs.getString(KEY_LOGGED_IN_EMAIL, null);
+        return (v != null && v.isEmpty()) ? null : v;
+        // null means not logged in
     }
 }

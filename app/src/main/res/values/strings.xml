@@ -38,7 +38,9 @@
 
     <!-- Placeholder BLE error -->
     <string name="ble_placeholder_error_title">Bluetooth unavailable</string>
-    <string name="ble_placeholder_error_msg">We couldn’t access Bluetooth right now. Please check permissions or try again.</string>
+    <string name="ble_placeholder_error_msg">
+        We couldn’t access Bluetooth right now. Please check permissions or try again.
+    </string>
 
     <!-- Login -->
     <string name="login_title">Welcome back</string>
@@ -61,4 +63,16 @@
     <string name="logout_done">You have been logged out.</string>
     <string name="auto_reconnect_on">Auto-reconnect enabled</string>
     <string name="auto_reconnect_off">Auto-reconnect disabled</string>
+
+    <!-- Workout -->
+    <string name="workout_title">Workout</string>
+    <string name="end_workout">End Workout</string>
+    <string name="workout_device_unknown">Device: Unknown</string>
+    <string name="workout_device_fmt">Device: %1$s</string>
+    <string name="workout_started_fmt">Started: %1$s</string>
+
+    <!-- Workout Guards -->
+    <string name="need_connection_snackbar">Connect a device to start a workout</string>
+    <string name="tap_connect_to_begin">Tap Connect to begin</string>
+    <string name="must_connect_to_start">Please connect to a device to start a workout.</string>
 </resources>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/dashboardFragment">
+
+    <fragment
+        android:id="@+id/dashboardFragment"
+        android:name="com.team11.smartgym.ui.DashboardFragment"
+        android:label="Dashboard">
+        <action
+            android:id="@+id/action_dashboard_to_workout"
+            app:destination="@id/workoutFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/sessionsFragment"
+        android:name="com.team11.smartgym.ui.SessionsFragment"
+        android:label="Sessions" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.team11.smartgym.ui.SettingsFragment"
+        android:label="Settings" />
+
+    <fragment
+        android:id="@+id/workoutFragment"
+        android:name="com.team11.smartgym.ui.WorkoutFragment"
+        android:label="@string/workout_title" />
+</navigation>

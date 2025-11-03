@@ -17,6 +17,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
+import androidx.navigation.fragment.NavHostFragment;
 
 import com.github.mikephil.charting.charts.LineChart;
 import com.google.android.material.button.MaterialButton;
@@ -33,33 +34,33 @@ public class DashboardFragment extends Fragment {
     private Chip chipDevice;
     private LineChart chart;
     private TextView tvBpm, tvState;
-    private MaterialButton btnConnect, btnDisconnect;
+    private MaterialButton btnConnect, btnDisconnect, btnStartWorkout;
     private MaterialSwitch switchFake;
 
-    private ConnectionViewModel vm;
+    private DashboardViewModel vm;
+    private AppPrefs prefs;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private ActivityResultLauncher<Intent> scanLauncher;
-    private AppPrefs prefs;
 
-    @Nullable
-    @Override
+    @Nullable @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_dashboard, container, false);
 
-        chipDevice    = v.findViewById(R.id.chipDevice);
-        chart         = v.findViewById(R.id.chart);
-        tvBpm         = v.findViewById(R.id.tvBpm);
-        tvState       = v.findViewById(R.id.tvState);
-        btnConnect    = v.findViewById(R.id.btnConnect);
-        btnDisconnect = v.findViewById(R.id.btnDisconnect);
-        switchFake    = v.findViewById(R.id.switchFake);
+        chipDevice      = v.findViewById(R.id.chipDevice);
+        chart           = v.findViewById(R.id.chart);
+        tvBpm           = v.findViewById(R.id.tvBpm);
+        tvState         = v.findViewById(R.id.tvState);
+        btnConnect      = v.findViewById(R.id.btnConnect);
+        btnDisconnect   = v.findViewById(R.id.btnDisconnect);
+        btnStartWorkout = v.findViewById(R.id.btnStartWorkout);
+        switchFake      = v.findViewById(R.id.switchFake);
 
-        vm    = new ViewModelProvider(requireActivity()).get(ConnectionViewModel.class);
+        vm    = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
         prefs = new AppPrefs(requireContext());
 
-        // ----- Load persisted flags & last device into VM
+        // Restore flags + last device
         vm.setAutoReconnectEnabled(prefs.isAutoReconnect());
         String lastName = prefs.getLastDeviceName();
         String lastAddr = prefs.getLastDeviceAddr();
@@ -68,17 +69,21 @@ public class DashboardFragment extends Fragment {
             chipDevice.setText(lastName);
         }
 
-        // Observe name/state/bpm
-        vm.getDeviceName().observe(getViewLifecycleOwner(), name -> {
-            chipDevice.setText(TextUtils.isEmpty(name)
-                    ? getString(R.string.state_disconnected)
-                    : name);
-        });
-        vm.getState().observe(getViewLifecycleOwner(), this::applyState);
-        vm.getBpm().observe(getViewLifecycleOwner(), value ->
-                tvBpm.setText(value == null ? "-- bpm" : getString(R.string.hr_bpm, value)));
+        // Observers
+        vm.getDeviceName().observe(getViewLifecycleOwner(), name ->
+                chipDevice.setText(TextUtils.isEmpty(name)
+                        ? getString(R.string.state_disconnected)
+                        : name));
 
-        // Scan result: save device to prefs and connect
+        vm.getState().observe(getViewLifecycleOwner(), s -> {
+            applyState(s);
+            btnStartWorkout.setEnabled(s == ConnectionState.CONNECTED);
+        });
+
+        vm.getBpm().observe(getViewLifecycleOwner(),
+                bpm -> tvBpm.setText(bpm == null ? "-- bpm" : getString(R.string.hr_bpm, bpm)));
+
+        // Scan result
         scanLauncher = registerForActivityResult(
                 new ActivityResultContracts.StartActivityForResult(),
                 result -> {
@@ -88,57 +93,75 @@ public class DashboardFragment extends Fragment {
                         String addr = data.getStringExtra(DeviceScanActivity.EXTRA_DEVICE_ADDR);
                         if (!TextUtils.isEmpty(name)) {
                             vm.setDevice(name, addr);
-                            prefs.setLastDevice(name, addr); // persist last device
-                            chipDevice.setText(name);
-
+                            prefs.setLastDevice(name, addr);
                             vm.setState(ConnectionState.CONNECTING);
                             handler.postDelayed(() -> {
                                 vm.setState(ConnectionState.CONNECTED);
                                 SnackbarUtil.show(requireView(), getString(R.string.connected_snackbar));
-                            }, 800);
+                            }, 700);
                         }
                     }
                 });
 
-        // Connect respects Auto-reconnect flag
-        btnConnect.setOnClickListener(vw -> {
+        // Connect
+        btnConnect.setOnClickListener(click -> {
             boolean auto = vm.isAutoReconnectEnabled();
-            String savedName = vm.getDeviceName().getValue();
-
-            if (auto && !TextUtils.isEmpty(savedName)) {
+            String saved = vm.getDeviceName().getValue();
+            if (auto && !TextUtils.isEmpty(saved)) {
                 vm.setState(ConnectionState.CONNECTING);
                 handler.postDelayed(() -> {
                     vm.setState(ConnectionState.CONNECTED);
                     SnackbarUtil.show(requireView(), getString(R.string.connected_snackbar));
-                }, 700);
+                }, 650);
             } else {
                 scanLauncher.launch(new Intent(requireContext(), DeviceScanActivity.class));
             }
         });
 
-        // Disconnect confirm
+        // Disconnect (confirm)
         btnDisconnect.setOnClickListener(vw -> new MaterialAlertDialogBuilder(requireContext())
                 .setIcon(android.R.drawable.ic_menu_close_clear_cancel)
                 .setTitle(R.string.confirm_disconnect_title)
                 .setMessage(R.string.confirm_disconnect_msg)
                 .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(R.string.disconnect, (d, w) -> {
-                    vm.setState(ConnectionState.DISCONNECTED);
                     vm.stopFakeSensor();
+                    vm.setState(ConnectionState.DISCONNECTED);
                     SnackbarUtil.show(requireView(), getString(R.string.disconnected_snackbar));
-                    // We KEEP last device (Option A)
                 })
                 .show());
 
-        // Fake sensor
+        // Fake sensor toggle — also mark CONNECTED so Start is enabled
+        switchFake.setChecked(vm.isFakeSensorEnabled());
         switchFake.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            vm.setFakeSensorEnabled(isChecked);
             if (isChecked) {
-                vm.startFakeSensor();
+                if (vm.getState().getValue() != ConnectionState.CONNECTED) {
+                    vm.setState(ConnectionState.CONNECTED);
+                }
                 SnackbarUtil.show(requireView(), getString(R.string.fake_on));
             } else {
-                vm.stopFakeSensor();
+                // When turning off, keep current connection state; BPM will clear to "--"
                 SnackbarUtil.show(requireView(), getString(R.string.fake_off));
             }
+        });
+
+        // Start Workout (guard)
+        btnStartWorkout.setOnClickListener(vw -> {
+            ConnectionState s = vm.getState().getValue();
+            if (s != ConnectionState.CONNECTED) {
+                SnackbarUtil.show(requireView(), getString(R.string.need_connection_snackbar));
+                return;
+            }
+            String device = vm.getDeviceName().getValue();
+            long startedAt = System.currentTimeMillis();
+
+            Bundle args = new Bundle();
+            args.putString(WorkoutFragment.ARG_DEVICE_NAME, device == null ? "" : device);
+            args.putLong(WorkoutFragment.ARG_STARTED_AT, startedAt);
+
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_dashboard_to_workout, args);
         });
 
         if (vm.getState().getValue() == null) vm.setState(ConnectionState.DISCONNECTED);
@@ -149,6 +172,7 @@ public class DashboardFragment extends Fragment {
         switch (s) {
             case DISCONNECTED:
                 chipDevice.setChipIconResource(android.R.drawable.stat_sys_data_bluetooth);
+                chipDevice.setText(getString(R.string.state_disconnected));
                 tvState.setText(getString(R.string.state_disconnected));
                 btnConnect.setEnabled(true);
                 btnDisconnect.setEnabled(false);
