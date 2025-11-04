@@ -1,15 +1,38 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" android:padding="16dp"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="top"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
     <com.google.android.material.materialswitch.MaterialSwitch
         android:id="@+id/switchAutoReconnect"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:text="Auto-reconnect to last device" />
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/auto_reconnect" />
 
     <TextView
-        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
-        android:text="Theme follows system. More options soon."/>
+        android:text="@string/theme_follows_system" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/colorOutline"
+        android:layout_marginVertical="20dp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnLogout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/logout"
+        app:icon="@android:drawable/ic_lock_power_off"
+        app:iconGravity="textStart"
+        app:iconPadding="12dp"
+        style="@style/Widget.Material3.Button.OutlinedButton" />
+
 </LinearLayout>

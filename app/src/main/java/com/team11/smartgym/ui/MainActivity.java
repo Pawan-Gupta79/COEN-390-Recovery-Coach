@@ -1,61 +1,65 @@
 package com.team11.smartgym.ui;
 
-import android.Manifest;
-import android.os.Build;
+import android.content.Intent;
 import android.os.Bundle;
 
-import androidx.activity.EdgeToEdge;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.fragment.NavHostFragment;
+import androidx.navigation.ui.AppBarConfiguration;
+import androidx.navigation.ui.NavigationUI;
 
-import com.google.android.material.navigation.NavigationBarView;
+import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.team11.smartgym.R;
-import com.team11.smartgym.databinding.ActivityMainBinding;
+import com.team11.smartgym.data.SessionManager;
 
 public class MainActivity extends AppCompatActivity {
-    private ActivityMainBinding b;
 
-    @Override protected void onCreate(@Nullable Bundle savedInstanceState) {
+    private AppBarConfiguration appBarConfig;
+    private NavController navController;
+    private SessionManager session;
+
+    @Override
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        EdgeToEdge.enable(this);
-        b = ActivityMainBinding.inflate(getLayoutInflater());
-        setContentView(b.getRoot());
-        requestRuntimePerms();
 
-        b.bottomNav.setOnItemSelectedListener(navListener);
-        if (savedInstanceState == null) {
-            getSupportFragmentManager().beginTransaction()
-                    .replace(R.id.fragmentHost, new DashboardFragment())
-                    .commit();
+        session = new SessionManager(this);
+
+        // Guard: if logged out, go to Login immediately
+        if (!session.isLoggedIn()) {
+            Intent i = new Intent(this, LoginActivity.class);
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(i);
+            finish();
+            return;
         }
+
+        setContentView(R.layout.activity_main);
+
+        NavHostFragment host =
+                (NavHostFragment) getSupportFragmentManager().findFragmentById(R.id.nav_host);
+        if (host == null) return;
+        navController = host.getNavController();
+
+        appBarConfig = new AppBarConfiguration.Builder(
+                R.id.dashboardFragment, R.id.sessionsFragment, R.id.settingsFragment
+        ).build();
+
+        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
+        NavigationUI.setupWithNavController(bottomNav, navController);
+        bottomNav.setOnItemReselectedListener(item -> { /* no-op */ });
     }
 
-    private final NavigationBarView.OnItemSelectedListener navListener = item -> {
-        Fragment f;
-        int id = item.getItemId();
-        if (id == R.id.nav_dashboard) f = new DashboardFragment();
-        else if (id == R.id.nav_sessions) f = new SessionsFragment();
-        else f = new SettingsFragment();
-
-        getSupportFragmentManager().beginTransaction()
-                .setReorderingAllowed(true)
-                .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
-                .replace(R.id.fragmentHost, f)
-                .commit();
-        return true;
-    };
-
-    private void requestRuntimePerms() {
-        if (Build.VERSION.SDK_INT >= 31) {
-            requestPermissions(new String[]{
-                    Manifest.permission.BLUETOOTH_SCAN,
-                    Manifest.permission.BLUETOOTH_CONNECT,
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.POST_NOTIFICATIONS
-            }, 1);
-        } else {
-            requestPermissions(new String[]{ Manifest.permission.ACCESS_FINE_LOCATION }, 1);
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Double-guard: if session was cleared while paused
+        if (!new SessionManager(this).isLoggedIn()) {
+            Intent i = new Intent(this, LoginActivity.class);
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(i);
+            finish();
         }
     }
 }

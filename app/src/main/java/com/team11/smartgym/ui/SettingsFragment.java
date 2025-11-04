@@ -1,25 +1,64 @@
 package com.team11.smartgym.ui;
 
-import android.content.SharedPreferences;
+import android.content.Intent;
 import android.os.Bundle;
-import android.view.*;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.preference.PreferenceManager;
-import com.team11.smartgym.databinding.FragmentSettingsBinding;
+
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.materialswitch.MaterialSwitch;
+import com.team11.smartgym.R;
+import com.team11.smartgym.data.AppPrefs;
+import com.team11.smartgym.data.SessionManager;
 
 public class SettingsFragment extends Fragment {
-    private FragmentSettingsBinding b;
-    private SharedPreferences prefs;
 
-    @Nullable @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        b = FragmentSettingsBinding.inflate(inflater, container, false);
-        prefs = PreferenceManager.getDefaultSharedPreferences(requireContext());
-        b.switchAutoReconnect.setChecked(prefs.getBoolean("auto_reconnect", true));
-        b.switchAutoReconnect.setOnCheckedChangeListener((v, on) ->
-                prefs.edit().putBoolean("auto_reconnect", on).apply());
-        return b.getRoot();
+    private AppPrefs prefs;
+    private SessionManager session;
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        View v = inflater.inflate(R.layout.fragment_settings, container, false);
+
+        prefs = new AppPrefs(requireContext());
+        session = new SessionManager(requireContext());
+
+        MaterialSwitch switchAutoReconnect = v.findViewById(R.id.switchAutoReconnect);
+        MaterialButton btnLogout = v.findViewById(R.id.btnLogout);
+
+        // Load current preference state
+        switchAutoReconnect.setChecked(prefs.isAutoReconnect());
+
+        // Toggle auto-reconnect
+        switchAutoReconnect.setOnCheckedChangeListener((buttonView, isChecked) ->
+                prefs.setAutoReconnect(isChecked)
+        );
+
+        // Logout
+        btnLogout.setOnClickListener(view -> {
+            // 1) Clear session
+            session.clear();
+
+            // (optional) also clear last device to avoid auto-reconnect surprises
+            // new AppPrefs(requireContext()).clearLastDevice();
+
+            // 2) Launch Login fresh task
+            Intent i = new Intent(requireActivity(), LoginActivity.class);
+            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+            startActivity(i);
+
+            // 3) Finish this task stack to prevent back nav into Main
+            requireActivity().finishAffinity();
+        });
+
+        return v;
     }
 }
