@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+<application>
+    <!-- Debug-only entry to run the Live HR screen directly -->
+    <activity
+        android:name="com.team11.smartgym.hr.ui.livehr.LiveHeartRateHostActivity"
+        android:exported="true"
+        android:label="@string/title_live_hr"
+        android:theme="@style/Theme.SmartGym" />
+</application>
+
+</manifest>
