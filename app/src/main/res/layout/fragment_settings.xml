@@ -47,7 +47,7 @@
         android:id="@+id/btnDebugTools"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Debug tools"
+        android:text="Live HR (Debug)"
         style="@style/Widget.Material3.Button.OutlinedButton"
         android:visibility="gone" />
 
