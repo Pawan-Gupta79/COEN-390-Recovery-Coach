@@ -75,13 +75,4 @@
     <string name="need_connection_snackbar">Connect a device to start a workout</string>
     <string name="tap_connect_to_begin">Tap Connect to begin</string>
     <string name="must_connect_to_start">Please connect to a device to start a workout.</string>
-
-    <!-- UI-04: Live Heart Rate -->
-    <string name="hr_empty_state">Connect a device to see your heart rate</string>
-    <string name="last_updated">Last updated: %1$s</string>
-    <string name="ok">OK</string>
-    <string name="title_live_hr">Live Heart Rate</string>
-
-    <!-- Needed by fragment_live_hr.xml -->
-    <string name="start">Start</string>
 </resources>

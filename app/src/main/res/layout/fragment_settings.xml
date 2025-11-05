@@ -35,21 +35,4 @@
         app:iconPadding="12dp"
         style="@style/Widget.Material3.Button.OutlinedButton" />
 
-    <!-- Divider -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:background="?attr/colorOutline"
-        android:layout_marginVertical="20dp" />
-
-    <!-- Debug-only: open Live HR test screen -->
-    <Button
-        android:id="@+id/btnDebugLiveHr"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Open Live HR (debug)"
-        android:visibility="gone"
-        android:layout_marginTop="12dp" />
-
-
 </LinearLayout>
