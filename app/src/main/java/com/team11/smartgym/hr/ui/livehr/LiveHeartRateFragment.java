@@ -20,10 +20,21 @@ import com.team11.smartgym.hr.util.UiError;
 public class LiveHeartRateFragment extends Fragment {
 
     private HeartRateViewModel vm;
+
+    private TextView tvBpm;
+    private TextView tvUpdated;
+    private TextView tvState;
     private View emptyBox;
+    private Button btnStart;
+    private Button btnStop;
 
     @Nullable
     @Override
+    public View onCreateView(
+            @NonNull LayoutInflater inflater,
+            @Nullable ViewGroup container,
+            @Nullable Bundle savedInstanceState
+    ) {
         return inflater.inflate(R.layout.fragment_live_hr, container, false);
     }
 
@@ -49,24 +60,35 @@ public class LiveHeartRateFragment extends Fragment {
             emptyBox.setVisibility(hasData ? View.GONE : View.VISIBLE);
         });
 
+        vm.lastUpdated().observe(getViewLifecycleOwner(), ts -> {
+            tvUpdated.setText(ts == null ? "" : getString(R.string.last_updated, ts));
+        });
 
         vm.connection().observe(getViewLifecycleOwner(), state -> {
             tvState.setText(state == null ? "" : state.name());
+            btnStart.setEnabled(state != ConnectionState.CONNECTING);
         });
 
+        vm.uiError().observe(getViewLifecycleOwner(), this::showMessage);
     }
 
+    private void showMessage(UiError err) {
+        if (getView() == null || err == null) return;
         if (err.isBlocking) {
             new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                     .setMessage(err.message)
                     .setPositiveButton(R.string.ok, null)
                     .show();
         } else {
+            Snackbar.make(getView(), err.message, Snackbar.LENGTH_LONG)
+                    .setAction(err.action, _v -> vm.start())
+                    .show();
         }
     }
 
     @Override public void onResume() {
         super.onResume();
+        // Optional: auto-start when visible. You can comment this out if you want manual control.
         vm.start();
     }
 
