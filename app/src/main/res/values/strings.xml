@@ -10,4 +10,6 @@
     <string name="scanning">Scanning…</string>
     <string name="scan">Scan</string>
     <string name="fake_mode">Use Fake Sensor</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

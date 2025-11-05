@@ -53,9 +53,8 @@ dependencies {
 
     implementation libs.work.runtime
     implementation libs.preference
-
+    implementation "androidx.preference:preference-ktx:1.2.0"
     implementation libs.mpandroidchart
-
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core

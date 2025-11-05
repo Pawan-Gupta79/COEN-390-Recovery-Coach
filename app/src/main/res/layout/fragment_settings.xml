@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" android:padding="16dp"
-    android:layout_width="match_parent" android:layout_height="match_parent">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
 
     <com.google.android.material.materialswitch.MaterialSwitch
         android:id="@+id/switchAutoReconnect"
@@ -9,7 +12,58 @@
         android:text="Auto-reconnect to last device" />
 
     <TextView
-        android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:layout_marginTop="12dp"
-        android:text="Theme follows system. More options soon."/>
+        android:id="@+id/login"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingVertical="12dp"
+        android:text="Login into Your Account"
+        android:textSize="16sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:background="@drawable/box_border"
+        android:drawablePadding="8dp" />
+
+    <TextView
+        android:id="@+id/editProfile"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingVertical="12dp"
+        android:text="Edit Profile"
+        android:textSize="16sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:background="@drawable/box_border"
+        android:drawablePadding="8dp" />
+
+    <TextView
+        android:id="@+id/viewProfile"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingVertical="12dp"
+        android:text="View Profile"
+        android:textSize="16sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:background="@drawable/box_border"
+        android:drawablePadding="8dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1" />
+
+    <Button
+        android:id="@+id/logout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:drawablePadding="8dp"
+        android:paddingVertical="12dp"
+        android:text="Logout"
+        android:backgroundTint="#FF0000"
+        android:layout_marginBottom="20dp"
+        android:textSize="16sp" />
+
 </LinearLayout>
