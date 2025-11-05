@@ -1,13 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-<application>
-    <!-- Debug-only entry to run the Live HR screen directly -->
-    <activity
-        android:name="com.team11.smartgym.hr.ui.livehr.LiveHeartRateHostActivity"
-        android:exported="true"
-        android:label="@string/title_live_hr"
-        android:theme="@style/Theme.SmartGym" />
-</application>
+    <application>
+        <!-- Keep the Live HR host available in debug -->
+        <activity
+            android:name="com.team11.smartgym.hr.ui.livehr.LiveHeartRateHostActivity"
+            android:exported="false"
+            android:label="@string/title_live_hr" />
+
+        <!-- Keep DebugLauncherActivity declared (no LAUNCHER!) -->
+        <activity
+            android:name="com.team11.smartgym.debug.DebugLauncherActivity"
+            android:exported="false"
+            android:label="@string/debug_launcher_title" />
+    </application>
 
 </manifest>

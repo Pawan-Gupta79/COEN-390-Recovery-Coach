@@ -76,12 +76,24 @@
     <string name="tap_connect_to_begin">Tap Connect to begin</string>
     <string name="must_connect_to_start">Please connect to a device to start a workout.</string>
 
-    <!-- UI-04: Live Heart Rate -->
-    <string name="hr_empty_state">Connect a device to see your heart rate</string>
-    <string name="last_updated">Last updated: %1$s</string>
-    <string name="ok">OK</string>
+    <!-- UI-04 (Live HR) additions -->
     <string name="title_live_hr">Live Heart Rate</string>
+    <string name="hr_empty_state">No data yet</string>
+    <string name="last_updated">Last updated: %1$s</string>
 
-    <!-- Needed by fragment_live_hr.xml -->
+    <!-- Controls used in Live HR layout -->
     <string name="start">Start</string>
+    <string name="retry">Retry</string>
+    <string name="ok">OK</string>
+    <!-- Optional centralized copy (not currently referenced in code) -->
+    <string name="err_bt_off">Bluetooth is off. Turn it on to continue.</string>
+    <string name="err_perm_bt">Bluetooth permission is required.</string>
+    <string name="err_loc_off">Location is off. Enable it to scan for devices.</string>
+    <string name="err_conn_failed">Reconnect failed.</string>
+    <string name="err_gatt">Bluetooth error occurred.</string>
+    <string name="err_unknown">Something went wrong.</string>
+    <string name="debug_launcher_title">Debug Menu</string>
+    <string name="debug_open_live_hr">Open Live Heart Rate (Debug)</string>
+
 </resources>
+

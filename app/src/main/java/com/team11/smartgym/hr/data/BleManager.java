@@ -2,32 +2,30 @@ package com.team11.smartgym.hr.data;
 
 public interface BleManager {
 
-    interface OnHeartRateListener {
-        void onHeartRate(int bpm);
-    }
-
-    interface OnErrorListener {
-        void onError(Throwable error);
-    }
-
     interface OnConnectionChangedListener {
         void onConnected();
         void onDisconnected();
     }
 
-    // --- Connection control ---
+    interface OnHeartRateListener {
+        void onHeartRate(int value);
+    }
+
+    interface OnErrorListener {
+        void onError(BleError error);
+    }
+
+    // Connection
     void connect();
     void disconnect();
+    boolean isConnected();
 
-    // --- Heart-rate notifications ---
+    // HR notifications
     void startHeartRate();
     void stopHeartRate();
 
-    // --- State ---
-    boolean isConnected();
-
-    // --- Listeners ---
-    void setHeartRateListener(OnHeartRateListener l);
-    void setErrorListener(OnErrorListener l);
-    void setConnectionListener(OnConnectionChangedListener l);
+    // Set listeners
+    void setConnectionListener(OnConnectionChangedListener listener);
+    void setHeartRateListener(OnHeartRateListener listener);
+    void setErrorListener(OnErrorListener listener);
 }

@@ -3,6 +3,10 @@ package com.team11.smartgym.hr.data;
 import android.os.Handler;
 import android.os.Looper;
 
+import com.team11.smartgym.BuildConfig;
+
+import java.util.Random;
+
 public class StubBleManager implements BleManager {
 
     private boolean connected = false;
@@ -11,23 +15,22 @@ public class StubBleManager implements BleManager {
     private OnErrorListener errorListener;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
+    private final Random rnd = new Random();
 
-    // UI-04.2 Test flag: auto-disconnect once after first connect
-    private boolean testAutoDropOnce = true;
+    private long suppressHrUntilMs = 0L;
+
+    // Deterministic timeout pacing (DEBUG only)
+    private int tickCount = 0;
+    private boolean firstTimeoutSent = false;
+    private int ticksBetweenTimeouts = 20; // ~20s between timeouts
+    private int firstTimeoutAtTick = 8;    // first at ~8s
+    private int nextTimeoutTick = -1;
 
     @Override
     public void connect() {
-        // Simulate async connect after 700ms
         handler.postDelayed(() -> {
             connected = true;
             if (connectionListener != null) connectionListener.onConnected();
-
-            // --- TEST HOOK: simulate unexpected disconnect once ---
-            if (testAutoDropOnce) {
-                testAutoDropOnce = false;
-                handler.postDelayed(this::disconnect, 2000); // drop after 2s
-            }
-            // -------------------------------------------------------
         }, 700);
     }
 
@@ -39,15 +42,12 @@ public class StubBleManager implements BleManager {
     }
 
     @Override
-    public boolean isConnected() {
-        return connected;
-    }
+    public boolean isConnected() { return connected; }
 
     @Override
     public void startHeartRate() {
         if (!connected) return;
 
-        // Emit fake HR every 1s
         handler.postDelayed(new Runnable() {
             int hr = 78;
 
@@ -55,35 +55,46 @@ public class StubBleManager implements BleManager {
             public void run() {
                 if (!connected) return;
 
-                // small random HR variation
-                hr += (int) (Math.random() * 6 - 3);
-                if (hr < 50) hr = 50;
-                if (hr > 170) hr = 170;
+                tickCount++;
 
-                if (heartRateListener != null) heartRateListener.onHeartRate(hr);
+                if (BuildConfig.DEBUG) {
+                    if (!firstTimeoutSent && tickCount >= firstTimeoutAtTick) {
+                        fireTimeoutAndPause();
+                        firstTimeoutSent = true;
+                        nextTimeoutTick = tickCount + ticksBetweenTimeouts;
+                    } else if (firstTimeoutSent && nextTimeoutTick > 0 && tickCount >= nextTimeoutTick) {
+                        fireTimeoutAndPause();
+                        nextTimeoutTick = tickCount + ticksBetweenTimeouts;
+                    }
+                } else {
+                    if (errorListener != null && rnd.nextInt(50) == 0) {
+                        fireTimeoutAndPause();
+                    }
+                }
+
+                // Emit HR only when not suppressed (simulate a stall)
+                if (System.currentTimeMillis() >= suppressHrUntilMs) {
+                    hr += rnd.nextInt(7) - 3;
+                    if (hr < 50) hr = 50;
+                    if (hr > 170) hr = 170;
+                    if (heartRateListener != null) heartRateListener.onHeartRate(hr);
+                }
 
                 handler.postDelayed(this, 1000);
             }
         }, 1000);
     }
 
-    @Override
-    public void stopHeartRate() {
-        // No-op for stub
+    private void fireTimeoutAndPause() {
+        if (errorListener != null) {
+            errorListener.onError(new BleError(BleError.Code.GATT_TIMEOUT));
+        }
+        // Pause HR emissions for ~7s to give the user time to see & tap Retry
+        suppressHrUntilMs = System.currentTimeMillis() + 7000L;
     }
 
-    @Override
-    public void setConnectionListener(OnConnectionChangedListener listener) {
-        connectionListener = listener;
-    }
-
-    @Override
-    public void setHeartRateListener(OnHeartRateListener listener) {
-        heartRateListener = listener;
-    }
-
-    @Override
-    public void setErrorListener(OnErrorListener listener) {
-        errorListener = listener;
-    }
+    @Override public void stopHeartRate() { /* loop ends when disconnected */ }
+    @Override public void setConnectionListener(OnConnectionChangedListener l) { connectionListener = l; }
+    @Override public void setHeartRateListener(OnHeartRateListener l) { heartRateListener = l; }
+    @Override public void setErrorListener(OnErrorListener l) { errorListener = l; }
 }

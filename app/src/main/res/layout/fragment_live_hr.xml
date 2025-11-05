@@ -1,71 +1,113 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/coordinator"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- INLINE RETRY BANNER (sticky) -->
     <LinearLayout
-        android:orientation="vertical"
-        android:padding="24dp"
-        android:gravity="center_horizontal"
+        android:id="@+id/retryBanner"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="14dp"
+        android:gravity="center_vertical"
+        android:background="#323232"
+        android:visibility="gone"
+        android:clickable="true"
+        android:focusable="true"
+        android:elevation="8dp">
 
         <TextView
-            android:id="@+id/tvState"
-            android:text="DISCONNECTED"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:id="@+id/retryMsg"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#FFFFFF"
+            android:text="Device not responding."
+            android:maxLines="2" />
 
-        <!-- Empty state box -->
-        <TextView
-            android:id="@+id/emptyBox"
-            android:text="@string/hr_empty_state"
-            android:layout_marginBottom="16dp"
+        <Button
+            android:id="@+id/btnRetry"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+            android:layout_height="wrap_content"
+            android:text="@string/retry"
+            android:textAllCaps="false"
+            android:clickable="true"
+            android:focusable="true" />
+    </LinearLayout>
 
-        <!-- BPM -->
-        <TextView
-            android:id="@+id/tvBpm"
-            android:text="--"
-            android:textStyle="bold"
-            android:textSize="48sp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
+    <!-- CONTENT -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-        <!-- Last updated -->
-        <TextView
-            android:id="@+id/tvUpdated"
-            android:text=""
-            android:layout_marginTop="8dp"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content" />
-
-        <!-- Controls (for testing) -->
         <LinearLayout
-            android:orientation="horizontal"
-            android:layout_marginTop="24dp"
-            android:layout_width="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp"
+            android:gravity="center_horizontal"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content">
 
-            <Button
-                android:id="@+id/btnStart"
-                android:text="@string/start"
+            <TextView
+                android:id="@+id/tvState"
+                android:text="DISCONNECTED"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" />
 
-            <Space
-                android:layout_width="16dp"
-                android:layout_height="1dp" />
-
-            <Button
-                android:id="@+id/btnStop"
-                android:text="@string/stop"
+            <!-- Empty state box -->
+            <TextView
+                android:id="@+id/emptyBox"
+                android:text="@string/hr_empty_state"
+                android:layout_marginBottom="16dp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" />
+
+            <!-- BPM -->
+            <TextView
+                android:id="@+id/tvBpm"
+                android:text="--"
+                android:textStyle="bold"
+                android:textSize="48sp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <!-- Last updated -->
+            <TextView
+                android:id="@+id/tvUpdated"
+                android:text=""
+                android:layout_marginTop="8dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+
+            <!-- Controls (for testing) -->
+            <LinearLayout
+                android:orientation="horizontal"
+                android:layout_marginTop="24dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content">
+
+                <Button
+                    android:id="@+id/btnStart"
+                    android:text="@string/start"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+
+                <Space
+                    android:layout_width="16dp"
+                    android:layout_height="1dp" />
+
+                <Button
+                    android:id="@+id/btnStop"
+                    android:text="@string/stop"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
         </LinearLayout>
+    </ScrollView>
 
-    </LinearLayout>
-</ScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
