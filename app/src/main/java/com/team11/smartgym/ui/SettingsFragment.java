@@ -1,7 +1,5 @@
 package com.team11.smartgym.ui;
 
-import android.content.ActivityNotFoundException;
-import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -10,76 +8,44 @@ import android.view.ViewGroup;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
-import com.google.android.material.snackbar.Snackbar;
-import com.team11.smartgym.BuildConfig;
 import com.team11.smartgym.R;
 import com.team11.smartgym.data.AppPrefs;
-import com.team11.smartgym.data.SessionManager;
+import com.team11.smartgym.ui.common.SnackbarUtil;
 
 public class SettingsFragment extends Fragment {
 
+    private MaterialSwitch switchAutoReconnect;
+    private ConnectionViewModel vm;
     private AppPrefs prefs;
-    private SessionManager session;
 
-    @Nullable
-    @Override
+    @Nullable @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
-        View v = inflater.inflate(R.layout.fragment_settings, container, false);
+        return inflater.inflate(R.layout.fragment_settings, container, false);
+    }
 
+    @Override public void onViewCreated(@NonNull View v, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(v, savedInstanceState);
+        switchAutoReconnect = v.findViewById(R.id.switchAutoReconnect);
+        vm    = new ViewModelProvider(requireActivity()).get(ConnectionViewModel.class);
         prefs = new AppPrefs(requireContext());
-        session = new SessionManager(requireContext());
 
-        MaterialSwitch switchAutoReconnect = v.findViewById(R.id.switchAutoReconnect);
-        MaterialButton btnLogout = v.findViewById(R.id.btnLogout);
-        MaterialButton btnDebug = v.findViewById(R.id.btnDebugTools);
+        // Initialize from prefs
+        boolean on = prefs.isAutoReconnect();
+        switchAutoReconnect.setChecked(on);
+        vm.setAutoReconnectEnabled(on);
 
-        // Load current preference state
-        switchAutoReconnect.setChecked(prefs.isAutoReconnect());
-
-        // Toggle auto-reconnect
-        switchAutoReconnect.setOnCheckedChangeListener((buttonView, isChecked) ->
-                prefs.setAutoReconnect(isChecked)
-        );
-
-        // Logout
-        btnLogout.setOnClickListener(view -> {
-            // 1) Clear session
-            session.clear();
-
-            // 2) Launch Login fresh task
-            Intent i = new Intent(requireActivity(), LoginActivity.class);
-            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(i);
-
-            // 3) Finish this task stack to prevent back nav into Main
-            requireActivity().finishAffinity();
+        // Write-through when toggled
+        switchAutoReconnect.setOnCheckedChangeListener((button, isChecked) -> {
+            prefs.setAutoReconnect(isChecked);
+            vm.setAutoReconnectEnabled(isChecked);
+            SnackbarUtil.show(v, isChecked
+                    ? getString(R.string.auto_reconnect_on)
+                    : getString(R.string.auto_reconnect_off));
         });
-
-        // ---- Debug tools (debug builds only) ----
-        if (BuildConfig.DEBUG) {
-            btnDebug.setVisibility(View.VISIBLE);
-            btnDebug.setOnClickListener(view -> {
-                try {
-                    Intent i = new Intent();
-                    i.setClassName(
-                            requireContext().getPackageName(),
-                            "com.team11.smartgym.hr.ui.livehr.LiveHeartRateHostActivity"
-                    );
-                    startActivity(i);
-                } catch (ActivityNotFoundException ex) {
-                    Snackbar.make(v, "Live HR debug screen not available.", Snackbar.LENGTH_SHORT).show();
-                }
-            });
-        } else {
-            btnDebug.setVisibility(View.GONE);
-        }
-
-
-        return v;
     }
 }

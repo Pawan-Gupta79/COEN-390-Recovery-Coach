@@ -38,9 +38,7 @@
 
     <!-- Placeholder BLE error -->
     <string name="ble_placeholder_error_title">Bluetooth unavailable</string>
-    <string name="ble_placeholder_error_msg">
-        We couldn’t access Bluetooth right now. Please check permissions or try again.
-    </string>
+    <string name="ble_placeholder_error_msg">We couldn’t access Bluetooth right now. Please check permissions or try again.</string>
 
     <!-- Login -->
     <string name="login_title">Welcome back</string>
@@ -63,37 +61,4 @@
     <string name="logout_done">You have been logged out.</string>
     <string name="auto_reconnect_on">Auto-reconnect enabled</string>
     <string name="auto_reconnect_off">Auto-reconnect disabled</string>
-
-    <!-- Workout -->
-    <string name="workout_title">Workout</string>
-    <string name="end_workout">End Workout</string>
-    <string name="workout_device_unknown">Device: Unknown</string>
-    <string name="workout_device_fmt">Device: %1$s</string>
-    <string name="workout_started_fmt">Started: %1$s</string>
-
-    <!-- Workout Guards -->
-    <string name="need_connection_snackbar">Connect a device to start a workout</string>
-    <string name="tap_connect_to_begin">Tap Connect to begin</string>
-    <string name="must_connect_to_start">Please connect to a device to start a workout.</string>
-
-    <!-- UI-04 (Live HR) additions -->
-    <string name="title_live_hr">Live Heart Rate</string>
-    <string name="hr_empty_state">No data yet</string>
-    <string name="last_updated">Last updated: %1$s</string>
-
-    <!-- Controls used in Live HR layout -->
-    <string name="start">Start</string>
-    <string name="retry">Retry</string>
-    <string name="ok">OK</string>
-    <!-- Optional centralized copy (not currently referenced in code) -->
-    <string name="err_bt_off">Bluetooth is off. Turn it on to continue.</string>
-    <string name="err_perm_bt">Bluetooth permission is required.</string>
-    <string name="err_loc_off">Location is off. Enable it to scan for devices.</string>
-    <string name="err_conn_failed">Reconnect failed.</string>
-    <string name="err_gatt">Bluetooth error occurred.</string>
-    <string name="err_unknown">Something went wrong.</string>
-    <string name="debug_launcher_title">Debug Menu</string>
-    <string name="debug_open_live_hr">Open Live Heart Rate (Debug)</string>
-
 </resources>
-
