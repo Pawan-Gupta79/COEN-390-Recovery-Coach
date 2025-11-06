@@ -12,9 +12,11 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
+import com.team11.smartgym.BuildConfig;
 import com.team11.smartgym.R;
 import com.team11.smartgym.data.AppPrefs;
 import com.team11.smartgym.data.SessionManager;
+import com.team11.smartgym.hr.ui.livehr.LiveHeartRateHostActivity;
 
 public class SettingsFragment extends Fragment {
 
@@ -33,6 +35,7 @@ public class SettingsFragment extends Fragment {
 
         MaterialSwitch switchAutoReconnect = v.findViewById(R.id.switchAutoReconnect);
         MaterialButton btnLogout = v.findViewById(R.id.btnLogout);
+        MaterialButton btnDebug = v.findViewById(R.id.btnDebugLiveHr);
 
         // Load current preference state
         switchAutoReconnect.setChecked(prefs.isAutoReconnect());
@@ -47,9 +50,6 @@ public class SettingsFragment extends Fragment {
             // 1) Clear session
             session.clear();
 
-            // (optional) also clear last device to avoid auto-reconnect surprises
-            // new AppPrefs(requireContext()).clearLastDevice();
-
             // 2) Launch Login fresh task
             Intent i = new Intent(requireActivity(), LoginActivity.class);
             i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
@@ -58,6 +58,19 @@ public class SettingsFragment extends Fragment {
             // 3) Finish this task stack to prevent back nav into Main
             requireActivity().finishAffinity();
         });
+
+        // ---- DEBUG BUTTON (Visible only in debug build) ----
+        if (btnDebug != null) {
+            if (BuildConfig.DEBUG) {
+                btnDebug.setVisibility(View.VISIBLE);
+                btnDebug.setOnClickListener(view -> {
+                    Intent intent = new Intent(requireContext(), LiveHeartRateHostActivity.class);
+                    startActivity(intent);
+                });
+            } else {
+                btnDebug.setVisibility(View.GONE);
+            }
+        }
 
         return v;
     }
