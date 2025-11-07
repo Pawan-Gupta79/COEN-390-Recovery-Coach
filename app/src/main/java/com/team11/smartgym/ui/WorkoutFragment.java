@@ -20,6 +20,7 @@ import java.text.DateFormat;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.Locale;
+import com.google.android.material.snackbar.Snackbar;
 
 public class WorkoutFragment extends Fragment {
 
@@ -31,6 +32,7 @@ public class WorkoutFragment extends Fragment {
     public static final int STATE_STARTING = 1;
     public static final int STATE_RUNNING = 2;
     public static final int STATE_PAUSED = 3;
+
 
     private DashboardViewModel vm;
     private int state = STATE_IDLE;
@@ -237,7 +239,7 @@ public class WorkoutFragment extends Fragment {
         }
     }
 
-    private void stopTimer() {
+    private void stopTimer(boolean save) {
         handler.removeCallbacks(timerRunnable);
         handler.removeCallbacks(countdownRunnable);
 
@@ -247,23 +249,25 @@ public class WorkoutFragment extends Fragment {
         btnPause.setEnabled(true);
         btnCancel.setEnabled(false);
         btnEnd.setEnabled(false);
-
         long totalElapsedSec = (System.currentTimeMillis() - startTime + pauseOffset) / 1000;
-        activityBpm.append("end").append(totalElapsedSec).append(",");
-        System.out.println("BPM log: " + activityBpm);
-
-        // return to idle state
+        if(save)
+        {
+            activityBpm.append("end").append(totalElapsedSec).append(",");
+            Snackbar.make(requireView(), "Session saved", Snackbar.LENGTH_SHORT).show();
+            System.out.println("BPM log: " + activityBpm);
+            //Save to database functionality
+        }
+        activityBpm.setLength(0);
         state = STATE_IDLE;
-        // DO NOT reassign btnPause listener here. leave the central handler intact.
     }
 
     private void confirmStop() {
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle("End Activity")
                 .setMessage("Do you want to save this activity?")
-                .setPositiveButton("Save", (dialog, which) -> stopTimer())
+                .setPositiveButton("Save", (dialog, which) -> stopTimer(true))
                 .setNegativeButton("Discard", (dialog, which) -> {
-                    stopTimer();
+                    stopTimer(false);
                     activityBpm.setLength(0);
                 })
                 .setNeutralButton("Cancel", (dialog, which) -> {})
