@@ -84,4 +84,6 @@
 
     <!-- Debug label (optional, for Settings debug button) -->
     <string name="title_live_hr">Live HR (Debug)</string>
+
+    <string name="start">Start</string>
 </resources>

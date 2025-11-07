@@ -14,7 +14,15 @@ android {
         versionName "1.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildFeatures { viewBinding true }
+
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments = ["room.schemaLocation": "$projectDir/app/schema".toString()]
+            }
+        }
     }
+
+
 
     buildTypes {
         release {
