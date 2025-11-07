@@ -19,6 +19,7 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:text="@string/workout_started_fmt" />
+
     <TextView
         android:id="@+id/tvWorkoutStatus"
         android:layout_width="wrap_content"
@@ -28,6 +29,7 @@
         android:textSize="16sp"
         android:gravity="center"
         android:layout_gravity="center" />
+
     <TextView
         android:id="@+id/tvWorkoutTimer"
         android:layout_width="wrap_content"
@@ -59,7 +61,7 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Save Workout"
+            android:text="End Activity"
             android:enabled="false" />
 
         <com.google.android.material.button.MaterialButton
@@ -68,7 +70,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="8dp"
-            android:text="Stop Workout"
+            android:text="Cancel Workout"
             android:enabled="false" />
     </LinearLayout>
 
