@@ -1,29 +1,22 @@
 package com.team11.smartgym.ui;
 
-import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.*;
-import android.widget.Button;
-import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.navigation.NavController;
-import androidx.navigation.Navigation;
-import androidx.preference.PreferenceManager;
 
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.materialswitch.MaterialSwitch;
+import com.team11.smartgym.BuildConfig;
 import com.team11.smartgym.R;
 import com.team11.smartgym.data.AppPrefs;
 import com.team11.smartgym.data.SessionManager;
+import com.team11.smartgym.hr.ui.livehr.LiveHeartRateHostActivity;
 import com.team11.smartgym.databinding.FragmentSettingsBinding;
 
 public class SettingsFragment extends Fragment {
@@ -51,6 +44,7 @@ public class SettingsFragment extends Fragment {
         NavController navController = Navigation.findNavController(requireActivity(), R.id.nav_host);
         MaterialSwitch switchAutoReconnect = v.findViewById(R.id.switchAutoReconnect);
         MaterialButton btnLogout = v.findViewById(R.id.btnLogout);
+        MaterialButton btnDebug = v.findViewById(R.id.btnDebugLiveHr);
 
         // Load current preference state
         switchAutoReconnect.setChecked(prefs.isAutoReconnect());
@@ -112,9 +106,22 @@ public class SettingsFragment extends Fragment {
             requireActivity().finishAffinity();
         });
 
+        // ---- DEBUG BUTTON (Visible only in debug build) ----
+        if (btnDebug != null) {
+            if (BuildConfig.DEBUG) {
+                btnDebug.setVisibility(View.VISIBLE);
+                btnDebug.setOnClickListener(view -> {
+                    Intent intent = new Intent(requireContext(), LiveHeartRateHostActivity.class);
+                    startActivity(intent);
+                });
+            } else {
+                btnDebug.setVisibility(View.GONE);
+            }
+        }
+
         return v;
     }
-
+}
 
     private boolean isUserLoggedIn() {
         SharedPreferences userPrefs = requireActivity().getSharedPreferences("user_session", Context.MODE_PRIVATE);

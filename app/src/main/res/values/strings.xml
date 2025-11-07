@@ -75,4 +75,13 @@
     <string name="need_connection_snackbar">Connect a device to start a workout</string>
     <string name="tap_connect_to_begin">Tap Connect to begin</string>
     <string name="must_connect_to_start">Please connect to a device to start a workout.</string>
+
+    <!-- Live HR (UI-04) -->
+    <string name="hr_empty_state">No data yet</string>
+    <string name="hr_last_updated_prefix">Last updated:</string>
+    <string name="hr_device_not_responding">Device not responding.</string>
+    <string name="hr_retry">Retry</string>
+
+    <!-- Debug label (optional, for Settings debug button) -->
+    <string name="title_live_hr">Live HR (Debug)</string>
 </resources>

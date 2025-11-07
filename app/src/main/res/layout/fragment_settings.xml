@@ -83,5 +83,12 @@
         app:iconGravity="textStart"
         app:iconPadding="12dp"
         style="@style/Widget.Material3.Button.OutlinedButton" />
+    <Button
+        android:id="@+id/btnDebugLiveHr"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Open Live HR (Debug)"
+        android:visibility="gone"
+        android:layout_marginTop="12dp" />
 
 </LinearLayout>
