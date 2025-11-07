@@ -5,9 +5,10 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
-@Database(entities = {Session.class, Reading.class}, version = 1)
+@Database(entities = {User.class, Session.class, Reading.class}, version = 1)
 public abstract class AppDb extends RoomDatabase {
     public abstract SessionDao sessionDao();
+    public abstract UserDao userDao();
     private static volatile AppDb I;
     public static AppDb get(Context c) {
         if (I == null) {

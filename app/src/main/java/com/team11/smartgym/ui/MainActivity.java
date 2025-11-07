@@ -1,18 +1,24 @@
 package com.team11.smartgym.ui;
 
 import android.content.Intent;
+import android.Manifest;
+import android.os.Build;
 import android.os.Bundle;
 
+import androidx.activity.EdgeToEdge;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.navigation.NavController;
 import androidx.navigation.fragment.NavHostFragment;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
+import androidx.fragment.app.Fragment;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
+import com.google.android.material.navigation.NavigationBarView;
 import com.team11.smartgym.R;
 import com.team11.smartgym.data.SessionManager;
+import com.team11.smartgym.databinding.ActivityMainBinding;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -48,7 +54,17 @@ public class MainActivity extends AppCompatActivity {
 
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
         NavigationUI.setupWithNavController(bottomNav, navController);
-        bottomNav.setOnItemReselectedListener(item -> { /* no-op */ });
+        bottomNav.setOnItemReselectedListener(item -> {
+            int id = item.getItemId();
+
+            if (id == R.id.dashboardFragment) {
+                navController.popBackStack(R.id.dashboardFragment, false);
+            } else if (id == R.id.sessionsFragment) {
+                navController.popBackStack(R.id.sessionsFragment, false);
+            } else if (id == R.id.settingsFragment) {
+                navController.popBackStack(R.id.settingsFragment, false);
+            }
+        });
     }
 
     @Override
