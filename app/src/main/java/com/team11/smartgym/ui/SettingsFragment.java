@@ -1,3 +1,4 @@
+
 package com.team11.smartgym.ui;
 
 import android.content.Intent;
@@ -11,15 +12,20 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.team11.smartgym.R;
 import com.team11.smartgym.data.AppPrefs;
 import com.team11.smartgym.data.SessionManager;
 
-public class SettingsFragment extends Fragment {
+public class INSettingsFragment extends Fragment {
 
     private AppPrefs prefs;
     private SessionManager session;
+
+    private String logout_confirmation_title = "Logout Confirmed";
+    private String logout_confirmation_message = "Logout is confirmed.";
+
 
     @Nullable
     @Override
@@ -42,23 +48,40 @@ public class SettingsFragment extends Fragment {
                 prefs.setAutoReconnect(isChecked)
         );
 
-        // Logout
-        btnLogout.setOnClickListener(view -> {
-            // 1) Clear session
-            session.clear();
-
-            // (optional) also clear last device to avoid auto-reconnect surprises
-            // new AppPrefs(requireContext()).clearLastDevice();
-
-            // 2) Launch Login fresh task
-            Intent i = new Intent(requireActivity(), LoginActivity.class);
-            i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-            startActivity(i);
-
-            // 3) Finish this task stack to prevent back nav into Main
-            requireActivity().finishAffinity();
-        });
+        // Logout with confirmation dialog
+        btnLogout.setOnClickListener(view -> showLogoutConfirmation());
 
         return v;
+    }
+
+    /**
+     * Show confirmation dialog before logging out
+     */
+    private void showLogoutConfirmation() {
+        new MaterialAlertDialogBuilder(requireContext())
+                .setTitle("Logout")
+                .setMessage("Are you sure you want to log out?")
+                .setPositiveButton(R.string.logout, (dialog, which) -> performLogout())
+                .setNegativeButton("cancel", null)
+                .show();
+    }
+
+    /**
+     * Perform the logout operation
+     */
+    private void performLogout() {
+        // 1) Clear session
+        session.clear();
+
+        // 2) Optionally clear last device to avoid auto-reconnect surprises
+        prefs.clearLastDevice();
+
+        // 3) Launch Login activity with fresh task
+        Intent i = new Intent(requireActivity(), LoginActivity.class);
+        i.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(i);
+
+        // 4) Finish this task stack to prevent back navigation into Main
+        requireActivity().finishAffinity();
     }
 }
