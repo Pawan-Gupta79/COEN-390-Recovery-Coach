@@ -22,7 +22,7 @@
         <!-- needs fixing-->
         <TextView
             android:id="@+id/emptyBox"
-            android:text="@string/hr_empty_state"
+            android:text="hr_empty_state"
             android:layout_marginBottom="16dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content" />
@@ -55,7 +55,7 @@
             <!--needs fixing-->
             <Button
                 android:id="@+id/btnStart"
-                android:text="@string/start"
+                android:text="start"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content" />
 
