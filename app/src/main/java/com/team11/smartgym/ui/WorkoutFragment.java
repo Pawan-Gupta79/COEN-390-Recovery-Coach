@@ -14,13 +14,15 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 
 import com.google.android.material.button.MaterialButton;
+import com.google.android.material.snackbar.Snackbar;
 import com.team11.smartgym.R;
 
 import java.text.DateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Locale;
-import com.google.android.material.snackbar.Snackbar;
 
 public class WorkoutFragment extends Fragment {
 
@@ -32,7 +34,6 @@ public class WorkoutFragment extends Fragment {
     public static final int STATE_STARTING = 1;
     public static final int STATE_RUNNING = 2;
     public static final int STATE_PAUSED = 3;
-
 
     private DashboardViewModel vm;
     private int state = STATE_IDLE;
@@ -53,6 +54,28 @@ public class WorkoutFragment extends Fragment {
 
     private int countdown = 3;
     private String selectedActivity = "Unknown";
+
+    //  Session object and Repo
+    public static class Session {
+        public final String activity;
+        public final long duration;
+        public final String bpmData;
+        public final long timestamp;
+
+        public Session(String activity, long duration, String bpmData, long timestamp) {
+            this.activity = activity;
+            this.duration = duration;
+            this.bpmData = bpmData;
+            this.timestamp = timestamp;
+        }
+    }
+
+    public static class SessionRepo {
+        private static final List<Session> sessions = new ArrayList<>();
+        public static void save(Session s) { sessions.add(s); }
+        public static List<Session> getAll() { return new ArrayList<>(sessions); }
+    }
+    //////////////////////////////////////
 
     private final Runnable countdownRunnable = new Runnable() {
         @Override
@@ -107,7 +130,6 @@ public class WorkoutFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
 
         View v = inflater.inflate(R.layout.fragment_workout, container, false);
-
         vm = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
 
         TextView tvDevice = v.findViewById(R.id.tvWorkoutDevice);
@@ -118,7 +140,6 @@ public class WorkoutFragment extends Fragment {
         btnEnd = v.findViewById(R.id.btnSaveWorkout);
         tvStatus = v.findViewById(R.id.tvWorkoutStatus);
 
-        // Start in idle
         state = STATE_IDLE;
         tvStatus.setText("Idle");
         tvTimer.setText("00:00.00");
@@ -127,7 +148,8 @@ public class WorkoutFragment extends Fragment {
         btnCancel.setEnabled(false);
         btnEnd.setEnabled(false);
 
-        // single, stable click handler for the main button
+        if (savedInstanceState != null) restoreState(savedInstanceState);
+
         btnPause.setOnClickListener(v1 -> {
             if (state == STATE_IDLE) {
                 showActivityChooser();
@@ -135,7 +157,6 @@ public class WorkoutFragment extends Fragment {
                 togglePauseResume();
             }
         });
-
         btnCancel.setOnClickListener(v12 -> confirmCancel());
         btnEnd.setOnClickListener(v13 -> confirmStop());
 
@@ -161,7 +182,6 @@ public class WorkoutFragment extends Fragment {
 
     private void showActivityChooser() {
         String[] activities = {"Running", "Cycling", "Weightlifting", "Yoga", "Cardio"};
-
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle("Choose Activity")
                 .setItems(activities, (dialog, which) -> {
@@ -169,12 +189,7 @@ public class WorkoutFragment extends Fragment {
                     tvStatus.setText("Selected: " + selectedActivity);
                     startCountdown();
                 })
-                .setNegativeButton("Cancel", (dialog, which) -> {
-                    state = STATE_IDLE;
-                    tvStatus.setText("Idle");
-                    tvTimer.setText("00:00.00");
-                    btnPause.setText("Start Activity");
-                })
+                .setNegativeButton("Cancel", (dialog, which) -> resetUI())
                 .show();
     }
 
@@ -201,7 +216,6 @@ public class WorkoutFragment extends Fragment {
         btnCancel.setEnabled(false);
         btnEnd.setEnabled(false);
     }
-
 
     private void togglePauseResume() {
         if (state == STATE_STARTING) {
@@ -243,22 +257,15 @@ public class WorkoutFragment extends Fragment {
         handler.removeCallbacks(timerRunnable);
         handler.removeCallbacks(countdownRunnable);
 
-        tvTimer.setText("00:00.00");
-        tvStatus.setText("Activity Ended");
-        btnPause.setText("Start New Activity");
-        btnPause.setEnabled(true);
-        btnCancel.setEnabled(false);
-        btnEnd.setEnabled(false);
         long totalElapsedSec = (System.currentTimeMillis() - startTime + pauseOffset) / 1000;
-        if(save)
-        {
+        if (save) {
             activityBpm.append("end").append(totalElapsedSec).append(",");
+            Session s = new Session(selectedActivity, totalElapsedSec, activityBpm.toString(), System.currentTimeMillis());
+            SessionRepo.save(s);
             Snackbar.make(requireView(), "Session saved", Snackbar.LENGTH_SHORT).show();
-            System.out.println("BPM log: " + activityBpm);
-            //Save to database functionality
         }
-        activityBpm.setLength(0);
-        state = STATE_IDLE;
+
+        resetUI();
     }
 
     private void confirmStop() {
@@ -266,11 +273,8 @@ public class WorkoutFragment extends Fragment {
                 .setTitle("End Activity")
                 .setMessage("Do you want to save this activity?")
                 .setPositiveButton("Save", (dialog, which) -> stopTimer(true))
-                .setNegativeButton("Discard", (dialog, which) -> {
-                    stopTimer(false);
-                    activityBpm.setLength(0);
-                })
-                .setNeutralButton("Cancel", (dialog, which) -> {})
+                .setNegativeButton("Discard", (dialog, which) -> stopTimer(false))
+                .setNeutralButton("Cancel", null)
                 .show();
     }
 
@@ -278,25 +282,25 @@ public class WorkoutFragment extends Fragment {
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle("Cancel Workout")
                 .setMessage("Are you sure you want to cancel this workout?")
-                .setPositiveButton("Yes", (dialog, which) -> {
-                    handler.removeCallbacks(timerRunnable);
-                    handler.removeCallbacks(countdownRunnable);
-
-                    state = STATE_IDLE;
-                    tvStatus.setText("Idle");
-                    tvTimer.setText("00:00.00");
-                    btnPause.setText("Start Activity");
-                    btnPause.setEnabled(true);
-                    btnCancel.setEnabled(false);
-                    btnEnd.setEnabled(false);
-
-                    activityBpm.setLength(0);
-                    pauseOffset = 0L;
-                    startTime = 0L;
-                    pauseStartTime = 0L;
-                })
-                .setNegativeButton("No", (dialog, which) -> {})
+                .setPositiveButton("Yes", (dialog, which) -> resetUI())
+                .setNegativeButton("No", null)
                 .show();
+    }
+
+    private void resetUI() {
+        state = STATE_IDLE;
+        tvStatus.setText("Idle");
+        tvTimer.setText("00:00.00");
+        btnPause.setText("Start Activity");
+        btnPause.setEnabled(true);
+        btnCancel.setEnabled(false);
+        btnEnd.setEnabled(false);
+        pauseOffset = 0L;
+        startTime = 0L;
+        pauseStartTime = 0L;
+        activityBpm.setLength(0);
+
+        //requireActivity().getOnBackPressedDispatcher().onBackPressed();
     }
 
     private void updateTimerDisplay(long elapsedMillis) {
@@ -311,6 +315,45 @@ public class WorkoutFragment extends Fragment {
         } else {
             tvTimer.setText(String.format(Locale.getDefault(),
                     "%02d:%02d:%02d", hours, minutes, seconds));
+        }
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt("state", state);
+        outState.putLong("startTime", startTime);
+        outState.putLong("pauseOffset", pauseOffset);
+        outState.putString("activity", selectedActivity);
+        outState.putString("bpmData", activityBpm.toString());
+    }
+
+    private void restoreState(Bundle stateBundle) {
+        state = stateBundle.getInt("state", STATE_IDLE);
+        startTime = stateBundle.getLong("startTime", 0L);
+        pauseOffset = stateBundle.getLong("pauseOffset", 0L);
+        selectedActivity = stateBundle.getString("activity", "Unknown");
+        activityBpm.append(stateBundle.getString("bpmData", ""));
+        updateUIState();
+    }
+
+    private void updateUIState() {
+        switch (state) {
+            case STATE_RUNNING:
+                tvStatus.setText(selectedActivity + " Ongoing");
+                btnPause.setText("Pause Workout");
+                btnCancel.setEnabled(false);
+                btnEnd.setEnabled(false);
+                handler.post(timerRunnable);
+                break;
+            case STATE_PAUSED:
+                tvStatus.setText(selectedActivity + " Paused");
+                btnPause.setText("Resume Workout");
+                btnCancel.setEnabled(true);
+                btnEnd.setEnabled(true);
+                break;
+            default:
+                resetUI();
         }
     }
 
