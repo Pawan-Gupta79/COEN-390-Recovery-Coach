@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:scrollbars="vertical"
@@ -43,23 +44,37 @@
             android:textSize="16sp"
             android:drawablePadding="8dp" />
 
-        <EditText
-            android:id="@+id/insertPassword"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:drawablePadding="8dp"
-            android:paddingVertical="12dp"
-            android:hint="Enter Password"
-            android:textSize="16sp" />
+            android:hint="Enter New Password"
+            app:endIconMode="password_toggle"
+            app:endIconTint="@color/black">
 
-        <EditText
-            android:id="@+id/reinsertPassword"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/insertPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:textSize="16sp"
+                android:paddingVertical="12dp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:drawablePadding="8dp"
-            android:paddingVertical="12dp"
-            android:hint="Reenter Password"
-            android:textSize="16sp" />
+            android:hint="Reenter New Password"
+            app:endIconMode="password_toggle"
+            app:endIconTint="@color/black">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/reinsertPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:textSize="16sp"
+                android:paddingVertical="12dp" />
+        </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
             android:id="@+id/name"
@@ -123,6 +138,41 @@
             android:drawablePadding="8dp"
             android:paddingVertical="12dp"
             android:hint="Enter Height in cm"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/weight"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="12dp"
+            android:text="Weight"
+            android:textSize="16sp"
+            android:drawablePadding="8dp" />
+
+        <EditText
+            android:id="@+id/insertWeight"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="8dp"
+            android:paddingVertical="12dp"
+            android:hint="Enter Weight in lbs"
+            android:textSize="16sp" />
+        <TextView
+            android:id="@+id/age"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="12dp"
+            android:text="Age"
+            android:textSize="16sp"
+            android:drawablePadding="8dp" />
+
+        <EditText
+            android:id="@+id/insertAge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="8dp"
+            android:paddingVertical="12dp"
+            android:hint="Enter Age"
             android:textSize="16sp" />
 
         <TextView

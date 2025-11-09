@@ -43,4 +43,15 @@ public class UserRepo {
     public void updateUser(User user) {
         executorService.execute(() -> userDao.updateUser(user));
     }
+
+    public interface EmailCheckCallback {
+        void onResult(boolean exists);
+    }
+
+    public void isEmailTaken(String email, EmailCheckCallback callback) {
+        executorService.execute(() -> {
+            boolean exists = userDao.countUsersByEmail(email) > 0;
+            callback.onResult(exists);
+        });
+    }
 }

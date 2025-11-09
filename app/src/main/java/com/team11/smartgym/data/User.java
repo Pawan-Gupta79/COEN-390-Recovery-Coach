@@ -14,8 +14,10 @@ public class User {
     public String name;
     public String surname;
     public String email;
-    public int height;
+    public double height;
     public String gender;
+    public int age;
+    public double weight;
 
     public int activityFrequency;
 }

@@ -23,7 +23,7 @@ import com.team11.smartgym.data.UserRepo;
 
 public class EditProfileFragment extends Fragment {
 
-    EditText email, password, name, surname, username, height;
+    EditText email, password, name, surname, username, height, weight, age;
     RadioButton maleOption, femaleOption;
     RadioButton inactiveOption, moderateActiveOption, activeOption;
     RadioGroup genderGroup, activityFrequencyGroup;
@@ -52,7 +52,8 @@ public class EditProfileFragment extends Fragment {
         surname = view.findViewById(R.id.insertSurname);
         username = view.findViewById(R.id.insertUsername);
         height = view.findViewById(R.id.insertHeight);
-
+        weight = view.findViewById(R.id.insertWeight);
+        age = view.findViewById(R.id.insertAge);
         maleOption = view.findViewById(R.id.maleOption);
         femaleOption = view.findViewById(R.id.femaleOption);
         inactiveOption = view.findViewById(R.id.inactiveOption);
@@ -100,22 +101,54 @@ public class EditProfileFragment extends Fragment {
                 Toast.makeText(requireContext(), "User not found", Toast.LENGTH_SHORT).show();
                 return;
             }
-            currentUser.email = email.getText().toString();
-            currentUser.password = password.getText().toString();
-            currentUser.name = name.getText().toString();
-            currentUser.surname = surname.getText().toString();
-            currentUser.username = username.getText().toString();
-            currentUser.height = Integer.parseInt(height.getText().toString());
-            currentUser.gender = (maleOption.isChecked() ? "Male" : "Female");
-            currentUser.activityFrequency = (activeOption.isChecked() ? 3 : (moderateActiveOption.isChecked() ? 2 : 1));
-            repo.updateUser(currentUser);
-            Toast.makeText(requireContext(), "Profile updated successfully", Toast.LENGTH_SHORT).show();
+            try {
+                Integer.parseInt(height.getText().toString());
+            } catch (NumberFormatException e) {
+                Toast.makeText(requireContext(), "Height must be a whole number (in cm)", Toast.LENGTH_SHORT).show();
+                return ;
+            }
+            try {
+                Integer.parseInt(weight.getText().toString());
+            } catch (NumberFormatException e) {
+                Toast.makeText(requireContext(), "Weight must be a  number (in lbs)", Toast.LENGTH_SHORT).show();
+                return ;
+            }
+            try {
+                Integer.parseInt(weight.getText().toString());
+            } catch (NumberFormatException e) {
+                Toast.makeText(requireContext(), "Age must be a whole number", Toast.LENGTH_SHORT).show();
+                return ;
+            }
+            String newEmail = email.getText().toString();
 
-
+            repo.isEmailTaken(newEmail, isTaken -> {
+                requireActivity().runOnUiThread(() -> {
+                    if (isTaken && !newEmail.equals(currentUser.email)) {
+                        Toast.makeText(requireContext(), "Email already in use by another account", Toast.LENGTH_SHORT).show();
+                    } else {
+                        saveProfileChanges();
+                    }
+                });
+            });
         });
 
 
 
         return view;
+    }
+    private void saveProfileChanges() {
+        currentUser.email = email.getText().toString();
+        currentUser.password = password.getText().toString();
+        currentUser.name = name.getText().toString();
+        currentUser.surname = surname.getText().toString();
+        currentUser.username = username.getText().toString();
+        currentUser.height = Integer.parseInt(height.getText().toString());
+        currentUser.gender = (maleOption.isChecked() ? "Male" : "Female");
+        currentUser.activityFrequency =
+                (activeOption.isChecked() ? 3 :
+                        (moderateActiveOption.isChecked() ? 2 : 1));
+
+        repo.updateUser(currentUser);
+        Toast.makeText(requireContext(), "Profile updated successfully", Toast.LENGTH_SHORT).show();
     }
 }

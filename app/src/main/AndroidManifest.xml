@@ -2,12 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.team11.smartgym">
 
-    <uses-permission
-        android:name="android.permission.BLUETOOTH"
-        android:maxSdkVersion="30" />
-    <uses-permission
-        android:name="android.permission.BLUETOOTH_ADMIN"
-        android:maxSdkVersion="30" />
+    <!-- BLE + Permissions -->
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -17,35 +14,42 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
-
-    <uses-feature
-        android:name="android.hardware.bluetooth_le"
-        android:required="true" />
+    <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.SmartGym">
+
+        <!-- LOGIN IS NOW THE FIRST SCREEN (LAUNCHER) -->
         <activity
-            android:name=".ui.EditProfileFragment"
-            android:exported="false" />
-        <activity
-            android:name=".ui.DeviceScanActivity"
-            android:exported="false"
-            android:label="@string/title_scan" />
-        <activity
-            android:name=".ui.MainActivity"
-            android:exported="true">
+            android:name=".ui.LoginActivity"
+            android:exported="true"
+            android:label="@string/login_title"
+            android:theme="@style/Theme.SmartGym">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <!-- MAIN SCREEN AFTER LOGIN -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.SmartGym" />
+
+        <!-- DEVICE SCAN SCREEN -->
+        <activity
+            android:name=".ui.DeviceScanActivity"
+            android:exported="false"
+            android:label="@string/title_scan" />
+
+        <!-- BLE SERVICE -->
         <service
             android:name=".ble.BleService"
             android:exported="false"

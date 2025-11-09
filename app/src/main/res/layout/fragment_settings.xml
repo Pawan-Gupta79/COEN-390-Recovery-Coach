@@ -2,15 +2,22 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:orientation="vertical"
-    android:padding="16dp"
+    android:padding="24dp"
+    android:gravity="top"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
     <com.google.android.material.materialswitch.MaterialSwitch
         android:id="@+id/switchAutoReconnect"
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:text="Auto-reconnect to last device" />
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/auto_reconnect" />
 
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/theme_follows_system" />
     <TextView
         android:id="@+id/login"
         android:layout_width="match_parent"
@@ -52,8 +59,9 @@
 
     <View
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1" />
+        android:layout_height="1dp"
+        android:background="?attr/colorOutline"
+        android:layout_marginVertical="20dp" />
 
     <Button
         android:id="@+id/logout"
@@ -65,5 +73,22 @@
         android:backgroundTint="#FF0000"
         android:layout_marginBottom="20dp"
         android:textSize="16sp" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnLogout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/logout"
+        app:icon="@android:drawable/ic_lock_power_off"
+        app:iconGravity="textStart"
+        app:iconPadding="12dp"
+        style="@style/Widget.Material3.Button.OutlinedButton" />
+    <Button
+        android:id="@+id/btnDebugLiveHr"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Open Live HR (Debug)"
+        android:visibility="gone"
+        android:layout_marginTop="12dp" />
 
 </LinearLayout>

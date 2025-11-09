@@ -6,6 +6,8 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
+import androidx.navigation.NavController;
+import androidx.navigation.Navigation;
 
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -40,6 +42,7 @@ public class LoginFragment extends Fragment {
         Button login = view.findViewById(R.id.login);
         TextView createAccount = view.findViewById(R.id.createAccount);
         repo = new UserRepo(requireContext());
+        NavController navController = Navigation.findNavController(requireActivity(), R.id.nav_host);
 
         login.setOnClickListener(v -> {
             String emailText = email.getText().toString();
@@ -70,11 +73,7 @@ public class LoginFragment extends Fragment {
         });
 
         createAccount.setOnClickListener(v -> {
-            requireActivity().getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.fragmentHost, new CreateAccountFragment())
-                    .addToBackStack(null)
-                    .commit();
+            navController.navigate(R.id.action_loginFragment_to_createAccountFragment);
 
         });
 

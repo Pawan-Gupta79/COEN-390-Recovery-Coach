@@ -21,7 +21,7 @@ import com.team11.smartgym.data.UserRepo;
 
 public class CreateAccountFragment extends Fragment {
 
-    EditText email, password, name, surname, username, height, gender, activityFrequency;
+    EditText email, password, name, surname, username, height, weight, age;
     RadioButton maleOption, femaleOption;
     RadioButton inactiveOption, moderateActiveOption, activeOption;
     RadioGroup genderGroup, activityFrequencyGroup;
@@ -48,6 +48,8 @@ public class CreateAccountFragment extends Fragment {
         surname = view.findViewById(R.id.insertSurname);
         username = view.findViewById(R.id.insertUsername);
         height = view.findViewById(R.id.insertHeight);
+        weight = view.findViewById(R.id.insertWeight);
+        age = view.findViewById(R.id.insertAge);
         maleOption = view.findViewById(R.id.maleOption);
         femaleOption = view.findViewById(R.id.femaleOption);
         inactiveOption = view.findViewById(R.id.inactiveOption);
@@ -56,23 +58,19 @@ public class CreateAccountFragment extends Fragment {
         createAccount = view.findViewById(R.id.createAccount);
 
         createAccount.setOnClickListener(v -> {
-            if (validateInputs()) {
-                // Create a new user
-                User user = new User();
-                user.email = email.getText().toString();
-                user.password = password.getText().toString();
-                user.name = name.getText().toString();
-                user.surname = surname.getText().toString();
-                user.username = username.getText().toString();
-                user.height = Integer.parseInt(height.getText().toString());
-                user.gender = maleOption.isChecked() ? "Male" : "Female";
-                user.activityFrequency = inactiveOption.isChecked() ? 1 :
-                        moderateActiveOption.isChecked() ? 2 : 3;
-                repo.insertUser(user);
-                Toast.makeText(requireContext(), "Account created successfully!", Toast.LENGTH_SHORT).show();
-                requireActivity().getOnBackPressedDispatcher().onBackPressed();
-            }
+            if (!validateInputs()) return;
+            String userEmail = email.getText().toString();
+            repo.isEmailTaken(userEmail, isTaken -> {
+                requireActivity().runOnUiThread(() -> {
+                    if (isTaken) {
+                        Toast.makeText(requireContext(), "Email already exists", Toast.LENGTH_SHORT).show();
+                    } else {
+                        createUser();
+                    }
+                });
+            });
         });
+
 
 
         return view;
@@ -85,8 +83,29 @@ public class CreateAccountFragment extends Fragment {
                 surname.getText().toString().isEmpty() ||
                 username.getText().toString().isEmpty() ||
                 height.getText().toString().isEmpty();
+
+
         if (areTextFieldsEmpty) {
             Toast.makeText(requireContext(), "Please fill in all fields", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+
+        try {
+            Integer.parseInt(height.getText().toString());
+        } catch (NumberFormatException e) {
+            Toast.makeText(requireContext(), "Height must be a whole number (in cm)", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        try {
+            Integer.parseInt(weight.getText().toString());
+        } catch (NumberFormatException e) {
+            Toast.makeText(requireContext(), "Weight must be a  number (in lbs)", Toast.LENGTH_SHORT).show();
+            return false;
+        }
+        try {
+            Integer.parseInt(weight.getText().toString());
+        } catch (NumberFormatException e) {
+            Toast.makeText(requireContext(), "Age must be a whole number", Toast.LENGTH_SHORT).show();
             return false;
         }
         if (!maleOption.isChecked() && !femaleOption.isChecked()) {
@@ -98,5 +117,24 @@ public class CreateAccountFragment extends Fragment {
             return false;
         }
         return true;
+    }
+
+    private void createUser() {
+        User user = new User();
+        user.email = email.getText().toString();
+        user.password = password.getText().toString();
+        user.name = name.getText().toString();
+        user.surname = surname.getText().toString();
+        user.username = username.getText().toString();
+        user.height = Integer.parseInt(height.getText().toString());
+        user.weight = Integer.parseInt(weight.getText().toString());
+        user.age = Integer.parseInt(age.getText().toString());
+        user.gender = maleOption.isChecked() ? "Male" : "Female";
+        user.activityFrequency = inactiveOption.isChecked() ? 1 :
+                moderateActiveOption.isChecked() ? 2 : 3;
+
+        repo.insertUser(user);
+        Toast.makeText(requireContext(), "Account created successfully!", Toast.LENGTH_SHORT).show();
+        requireActivity().getOnBackPressedDispatcher().onBackPressed();
     }
 }

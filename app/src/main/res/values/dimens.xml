@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="rc_screen_padding">24dp</dimen>
+    <dimen name="rc_gap_sm">8dp</dimen>
+    <dimen name="rc_gap_md">12dp</dimen>
+    <dimen name="rc_gap_lg">16dp</dimen>
+    <dimen name="rc_card_padding">16dp</dimen>
+    <dimen name="rc_button_height">48dp</dimen>
+    <dimen name="rc_icon_size">24dp</dimen>
+</resources>

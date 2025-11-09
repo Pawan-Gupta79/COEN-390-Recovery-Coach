@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:fillViewport="true"
@@ -42,23 +43,37 @@
             android:textSize="16sp"
             android:drawablePadding="8dp" />
 
-        <EditText
-            android:id="@+id/insertPassword"
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:drawablePadding="8dp"
-            android:paddingVertical="12dp"
             android:hint="Enter New Password"
-            android:textSize="16sp" />
+            app:endIconMode="password_toggle"
+            app:endIconTint="@color/black">
 
-        <EditText
-            android:id="@+id/reinsertPassword"
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/insertPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:textSize="16sp"
+                android:paddingVertical="12dp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:drawablePadding="8dp"
-            android:paddingVertical="12dp"
             android:hint="Reenter New Password"
-            android:textSize="16sp" />
+            app:endIconMode="password_toggle"
+            app:endIconTint="@color/black">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/reinsertPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:textSize="16sp"
+                android:paddingVertical="12dp" />
+        </com.google.android.material.textfield.TextInputLayout>
 
         <TextView
             android:id="@+id/name"

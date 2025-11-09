@@ -1,11 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="md_theme_light_primary">#0B57D0</color>
-    <color name="md_theme_light_secondary">#1F6FEB</color>
-    <color name="md_theme_light_surface">#FFFFFF</color>
-    <color name="md_theme_light_onSurface">#121212</color>
+    <!-- SmartGym Light Mode palette -->
+    <color name="rc_primary">#20C7B1</color>
+    <color name="rc_onPrimary">#FFFFFF</color>
+    <color name="rc_primaryContainer">#BFEFE7</color>
+    <color name="rc_onPrimaryContainer">#00382C</color>
 
-    <color name="md_theme_dark_primary">#8AB4F8</color>
-    <color name="md_theme_dark_secondary">#7BA7FF</color>
-    <color name="md_theme_dark_surface">#121212</color>
-    <color name="md_theme_dark_onSurface">#EDEDED</color>
+    <color name="rc_secondary">#1F6FEB</color>
+    <color name="rc_onSecondary">#FFFFFF</color>
+    <color name="rc_secondaryContainer">#D6E9FF</color>
+    <color name="rc_onSecondaryContainer">#003355</color>
+
+    <color name="rc_tertiary">#7D6CF2</color>
+    <color name="rc_onTertiary">#FFFFFF</color>
+
+    <color name="rc_background">#FFFFFF</color>
+    <color name="rc_onBackground">#121212</color>
+    <color name="rc_surface">#FFFFFF</color>
+    <color name="rc_onSurface">#121212</color>
+
+    <color name="rc_error">#B3261E</color>
+    <color name="rc_onError">#FFFFFF</color>
+    <color name="black">#000000</color>
 </resources>

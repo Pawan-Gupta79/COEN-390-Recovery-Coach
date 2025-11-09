@@ -1,7 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+
     <style name="Theme.SmartGym" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:windowLightStatusBar">true</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
+
+        <item name="android:statusBarColor">?attr/colorPrimary</item>
+        <item name="android:navigationBarColor">?attr/colorSurface</item>
+
+        <item name="colorPrimary">@color/rc_primary</item>
+        <item name="colorOnPrimary">@color/rc_onPrimary</item>
+        <item name="colorPrimaryContainer">@color/rc_primaryContainer</item>
+        <item name="colorOnPrimaryContainer">@color/rc_onPrimaryContainer</item>
+
+        <item name="colorSecondary">@color/rc_secondary</item>
+        <item name="colorOnSecondary">@color/rc_onSecondary</item>
+        <item name="colorSecondaryContainer">@color/rc_secondaryContainer</item>
+        <item name="colorOnSecondaryContainer">@color/rc_onSecondaryContainer</item>
+
+        <item name="colorTertiary">@color/rc_tertiary</item>
+        <item name="colorOnTertiary">@color/rc_onTertiary</item>
+
+        <item name="android:colorBackground">@color/rc_background</item>
+        <item name="colorSurface">@color/rc_surface</item>
+        <item name="colorOnSurface">@color/rc_onSurface</item>
+
+        <item name="colorError">@color/rc_error</item>
+        <item name="colorOnError">@color/rc_onError</item>
+
+
     </style>
+
 </resources>

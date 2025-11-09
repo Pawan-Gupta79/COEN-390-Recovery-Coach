@@ -20,6 +20,9 @@ public interface UserDao {
     @Query("SELECT * FROM User WHERE id = :id LIMIT 1")
     User getUserById(int id);
 
+    @Query("SELECT COUNT(*) FROM User WHERE email = :email")
+    int countUsersByEmail(String email);
+
     @Update
     void updateUser(User user);
 

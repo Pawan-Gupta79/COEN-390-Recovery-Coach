@@ -1,68 +1,110 @@
 package com.team11.smartgym.ui;
 
 import android.os.Bundle;
-import android.text.format.DateUtils;
-import android.view.*;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.team11.smartgym.R;
+import com.team11.smartgym.data.DatabaseProvider;
 import com.team11.smartgym.data.Session;
-import com.team11.smartgym.data.SessionRepo;
-import com.team11.smartgym.databinding.FragmentSessionsBinding;
+import com.team11.smartgym.data.SessionRepository;
+import com.team11.smartgym.ui.session.SessionViewModel;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class SessionsFragment extends Fragment {
-    private FragmentSessionsBinding b;
-    private final List<Session> data = new ArrayList<>();
-    private Adapter adapter;
 
-    @Nullable @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        b = FragmentSessionsBinding.inflate(inflater, container, false);
-        adapter = new Adapter(data);
-        b.rv.setAdapter(adapter);
-        load();
-        return b.getRoot();
+    private RecyclerView recyclerView;
+    private SessionsAdapter adapter;
+
+    // mini controls
+    private SessionViewModel vm;
+    private TextView tvStateMini;
+    private Button btnStartMini, btnStopMini, btnFakeMini;
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater,
+                             @Nullable ViewGroup container,
+                             @Nullable Bundle savedInstanceState) {
+        return inflater.inflate(R.layout.fragment_sessions, container, false);
     }
 
-    private void load() {
-        new Thread(() -> {
-            List<Session> list = new SessionRepo(requireContext()).list();
-            requireActivity().runOnUiThread(() -> {
-                data.clear(); data.addAll(list); adapter.notifyDataSetChanged();
-            });
-        }).start();
+    @Override
+    public void onViewCreated(@NonNull View view,
+                              @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+
+        // --- list wiring ---
+        recyclerView = view.findViewById(R.id.sessionsRecyclerView);
+        recyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
+        adapter = new SessionsAdapter();
+        recyclerView.setAdapter(adapter);
+
+        View empty = view.findViewById(R.id.layoutEmptyState);
+        updateEmptyState(empty, null);
+
+        SessionRepository repo = DatabaseProvider.get(requireContext()).getSessionRepository();
+        repo.getAllSessions().observe(getViewLifecycleOwner(), sessions -> {
+            adapter.submitList(sessions);
+            updateEmptyState(empty, sessions);
+        });
+
+        // --- mini controls wiring ---
+        tvStateMini = view.findViewById(R.id.tvStateMini);
+        btnStartMini = view.findViewById(R.id.btnStartMini);
+        btnStopMini  = view.findViewById(R.id.btnStopMini);
+        btnFakeMini  = view.findViewById(R.id.btnFakeMini);
+
+        vm = new ViewModelProvider(this).get(SessionViewModel.class);
+
+        vm.isRunning().observe(getViewLifecycleOwner(), running -> {
+            boolean isRunning = running != null && running;
+            tvStateMini.setText(isRunning ? "Running" : "Idle");
+            btnStartMini.setEnabled(!isRunning);
+            btnStopMini.setEnabled(isRunning);
+            btnFakeMini.setEnabled(isRunning);
+        });
+
+        vm.liveSampleCount().observe(getViewLifecycleOwner(), count -> {
+            Integer c = (count == null ? 0 : count);
+            boolean isRunning = Boolean.TRUE.equals(vm.isRunning().getValue());
+            String prefix = isRunning ? "Running" : "Idle";
+            tvStateMini.setText(String.format(Locale.getDefault(), "%s • Samples: %d", prefix, c));
+        });
+
+        btnStartMini.setOnClickListener(v -> {
+            Boolean running = vm.isRunning().getValue();
+            if (running != null && running) return;
+            vm.start();
+        });
+
+        btnStopMini.setOnClickListener(v -> {
+            Boolean running = vm.isRunning().getValue();
+            if (running == null || !running) return;
+            vm.stop();
+        });
+
+        btnFakeMini.setOnClickListener(v -> {
+            int bpm = 60 + (int)(Math.random() * 90); // 60–150
+            vm.onHeartRate(bpm);
+        });
     }
 
-    static class Adapter extends RecyclerView.Adapter<VH> {
-        private final List<Session> list;
-        Adapter(List<Session> list) { this.list = list; }
-
-        @NonNull @Override public VH onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_session, parent, false);
-            return new VH(v);
-        }
-        @Override public void onBindViewHolder(@NonNull VH h, int pos) {
-            Session s = list.get(pos);
-            String title = "Session • " + android.text.format.DateFormat.format("MMM d, h:mm a", s.startedAt);
-            long end = s.endedAt == 0 ? System.currentTimeMillis() : s.endedAt;
-            String meta = "Avg " + s.avgBpm + " bpm • Max " + s.maxBpm + " bpm • " +
-                    DateUtils.formatElapsedTime((end - s.startedAt) / 1000);
-            h.t1.setText(title);
-            h.t2.setText(meta);
-        }
-        @Override public int getItemCount() { return list.size(); }
-    }
-
-    static class VH extends RecyclerView.ViewHolder {
-        TextView t1, t2;
-        VH(@NonNull View v) { super(v); t1 = v.findViewById(R.id.tvTitle); t2 = v.findViewById(R.id.tvMeta); }
+    private void updateEmptyState(@Nullable View emptyView, @Nullable List<Session> list) {
+        boolean isEmpty = (list == null || list.isEmpty());
+        if (emptyView != null) emptyView.setVisibility(isEmpty ? View.VISIBLE : View.GONE);
+        if (recyclerView != null) recyclerView.setVisibility(isEmpty ? View.GONE : View.VISIBLE);
     }
 }
