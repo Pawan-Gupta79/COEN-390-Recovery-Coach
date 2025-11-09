@@ -13,10 +13,9 @@ import java.util.List;
  * - Stop: computes stats (ignoring the first N ms), saves TempSessionSnapshot via TempSessionStore,
  *         then resets buffers (carry-over logic for DS-01.7)
  *
- * Notes (DS-01.8):
- * - We clamp BPM samples to [0, 220] to avoid skew from impossible spikes.
- * - Ignore-window is configurable via setIgnoreWindowMs().
- * - No DB writes here (Sprint 3 will handle Room).
+ * DS-02.2:
+ * - Optional Repository integration (OFF by default) for future DS-06 persistence.
+ *   Call enableDbPersistence(true) to write Session/Reading/summary to Room.
  */
 public final class SessionController {
 
@@ -32,8 +31,23 @@ public final class SessionController {
     private final List<Sample> samples = new ArrayList<>();
     private final TempSessionStore store;
 
+    // ---- Optional Repository bits (OFF by default) ----
+    private SessionRepository repo = null;
+    private boolean persistToDb = false;
+    private long currentSessionId = 0L;
+
     public SessionController(Context context) {
         this.store = new TempSessionStore(context.getApplicationContext());
+    }
+
+    /** Attach a repository (safe to call anytime). Does NOT enable DB writes by itself. */
+    public synchronized void attachRepository(SessionRepository repository) {
+        this.repo = repository;
+    }
+
+    /** Toggle DB persistence; requires a non-null repository to actually write. */
+    public synchronized void enableDbPersistence(boolean enable) {
+        this.persistToDb = enable;
     }
 
     // ---------- Lifecycle -------------
@@ -43,6 +57,13 @@ public final class SessionController {
         running = true;
         startMs = System.currentTimeMillis();
         samples.clear();
+
+        // If persistence is enabled and repo is present, create a DB session row now.
+        if (persistToDb && repo != null) {
+            currentSessionId = repo.createSession(startMs);
+        } else {
+            currentSessionId = 0L;
+        }
     }
 
     /**
@@ -52,7 +73,13 @@ public final class SessionController {
     public synchronized void addSample(int bpm) {
         if (!running) return;
         long t = System.currentTimeMillis();
-        samples.add(new Sample(t, clampBpm(bpm)));
+        int clamped = clampBpm(bpm);
+        samples.add(new Sample(t, clamped));
+
+        // Optional live persistence
+        if (persistToDb && repo != null && currentSessionId != 0L) {
+            repo.addReading(currentSessionId, clamped);
+        }
     }
 
     /**
@@ -60,6 +87,7 @@ public final class SessionController {
      *  - compute stats ignoring the first {@link #ignoreWindowMs} milliseconds
      *  - create TempSessionSnapshot
      *  - save to TempSessionStore
+     *  - (optional) finalize DB session summary
      *  - reset buffers (carry-over requirement)
      *
      * @return the saved TempSessionSnapshot, or null if session wasn't running
@@ -79,10 +107,16 @@ public final class SessionController {
 
         store.save(snapshot);
 
+        // Optional DB summary finalize
+        if (persistToDb && repo != null && currentSessionId != 0L) {
+            repo.finalizeSession(currentSessionId, stats.avg, stats.max, endMs);
+        }
+
         // Reset buffers after saving (carry-over requirement)
         running = false;
         startMs = 0L;
         samples.clear();
+        currentSessionId = 0L;
 
         return snapshot;
     }
