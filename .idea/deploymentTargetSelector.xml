@@ -5,10 +5,7 @@
       <SelectionState runConfigName="app">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
-      <SelectionState runConfigName="LiveHeartRateHostActivity">
-        <option name="selectionMode" value="DROPDOWN" />
-      </SelectionState>
-      <SelectionState runConfigName="LiveHeartRateHostActivity (2)">
+      <SelectionState runConfigName="insertReadingsAndQueryBySession()">
         <option name="selectionMode" value="DROPDOWN" />
       </SelectionState>
     </selectionStates>

@@ -9,7 +9,6 @@
     <string name="disconnect">Disconnect</string>
     <string name="start_workout">Start Workout</string>
     <string name="stop">Stop</string>
-    <string name="start">Start</string>
     <string name="hr_bpm">%1$d bpm</string>
     <string name="device_unavailable">Device unavailable</string>
     <string name="scanning">Scanning…</string>
@@ -85,4 +84,6 @@
 
     <!-- Debug label (optional, for Settings debug button) -->
     <string name="title_live_hr">Live HR (Debug)</string>
+
+    <string name="start">Start</string>
 </resources>

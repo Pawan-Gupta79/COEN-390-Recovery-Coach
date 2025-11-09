@@ -1,22 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:layout_margin="8dp" android:padding="12dp"
-    app:cardCornerRadius="20dp" app:cardElevation="8dp">
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="8dp"
+    android:elevation="4dp"
+    android:padding="12dp">
 
     <LinearLayout
-        android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
 
-        <TextView android:id="@+id/tvTitle"
-            android:textStyle="bold" android:textSize="16sp"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Session"/>
+        <!-- Date & time -->
+        <TextView
+            android:id="@+id/tvSessionDate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Date"
+            android:textStyle="bold"
+            android:textSize="16sp" />
 
-        <TextView android:id="@+id/tvMeta"
-            android:layout_width="wrap_content" android:layout_height="wrap_content"
-            android:text="Avg — Max — Duration"/>
+        <TextView
+            android:id="@+id/tvSessionTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Time"
+            android:layout_marginTop="2dp"
+            android:textSize="14sp" />
+
+        <!-- Device -->
+        <TextView
+            android:id="@+id/tvSessionDevice"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Device"
+            android:layout_marginTop="6dp"
+            android:textSize="14sp" />
+
+        <!-- Duration -->
+        <TextView
+            android:id="@+id/tvSessionDuration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Duration"
+            android:layout_marginTop="2dp"
+            android:textSize="14sp" />
+
+        <!-- HR stats -->
+        <LinearLayout
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp">
+
+            <TextView
+                android:id="@+id/tvSessionAvgHr"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Avg: -- bpm"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tvSessionMaxHr"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="   Max: -- bpm"
+                android:layout_marginStart="8dp"
+                android:textSize="14sp" />
+        </LinearLayout>
+
+        <!-- Optional summary line -->
+        <TextView
+            android:id="@+id/tvSessionSummary"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Summary"
+            android:layout_marginTop="6dp"
+            android:textSize="14sp" />
+
     </LinearLayout>
-</com.google.android.material.card.MaterialCardView>
+
+</androidx.cardview.widget.CardView>

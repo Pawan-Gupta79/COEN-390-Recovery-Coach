@@ -17,9 +17,8 @@ public class SessionRepo {
     public void addReading(long sessionId, int bpm) {
         Reading r = new Reading();
         r.sessionId = sessionId;
-        r.ts = System.currentTimeMillis();
+        r.timestamp = System.currentTimeMillis();
         r.bpm = bpm;
-        db.sessionDao().insertReading(r);
     }
 
     public void endSession(long id, int avg, int max) {

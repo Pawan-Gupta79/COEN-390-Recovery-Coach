@@ -11,20 +11,98 @@
         <action
             android:id="@+id/action_dashboard_to_workout"
             app:destination="@id/workoutFragment" />
+        <action
+            android:id="@+id/action_dashboard_to_sessionControls"
+            app:destination="@id/sessionControlsFragment" />
     </fragment>
 
     <fragment
         android:id="@+id/sessionsFragment"
         android:name="com.team11.smartgym.ui.SessionsFragment"
-        android:label="Sessions" />
+        android:label="Sessions">
+        <action
+            android:id="@+id/action_sessions_to_sessionControls"
+            app:destination="@id/sessionControlsFragment" />
+        <action
+            android:id="@+id/action_sessions_to_snapshot"
+            app:destination="@id/sessionsSnapshotFragment" />
+    </fragment>
 
     <fragment
         android:id="@+id/settingsFragment"
         android:name="com.team11.smartgym.ui.SettingsFragment"
-        android:label="Settings" />
+        android:label="Settings">
+
+        <action
+            android:id="@+id/action_settingsFragment_to_loginFragment"
+            app:destination="@id/loginFragment"
+            app:popUpTo="@id/settingsFragment"
+            app:popUpToInclusive="false" />
+
+        <action
+            android:id="@+id/action_settingsFragment_to_editProfileFragment"
+            app:destination="@id/editProfileFragment"
+            app:popUpTo="@id/settingsFragment"
+            app:popUpToInclusive="false" />
+
+        <action
+            android:id="@+id/action_settingsFragment_to_viewProfileFragment"
+            app:destination="@id/viewProfileFragment"
+            app:popUpTo="@id/settingsFragment"
+            app:popUpToInclusive="false" />
+
+        <action
+            android:id="@+id/action_settingsFragment_to_createAccountFragment"
+            app:destination="@id/createAccountFragment"
+            app:popUpTo="@id/settingsFragment"
+            app:popUpToInclusive="false" />
+    </fragment>
 
     <fragment
         android:id="@+id/workoutFragment"
         android:name="com.team11.smartgym.ui.WorkoutFragment"
         android:label="@string/workout_title" />
+
+    <fragment
+        android:id="@+id/loginFragment"
+        android:name="com.team11.smartgym.ui.LoginFragment"
+        android:label="Login">
+
+        <action
+            android:id="@+id/action_loginFragment_to_createAccountFragment"
+            app:destination="@id/createAccountFragment"
+            app:popUpTo="@id/loginFragment"
+            app:popUpToInclusive="false" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/editProfileFragment"
+        android:name="com.team11.smartgym.ui.EditProfileFragment"
+        android:label="Edit Profile" />
+
+    <fragment
+        android:id="@+id/viewProfileFragment"
+        android:name="com.team11.smartgym.ui.ViewProfileFragment"
+        android:label="View Profile" />
+
+    <fragment
+        android:id="@+id/createAccountFragment"
+        android:name="com.team11.smartgym.ui.CreateAccountFragment"
+        android:label="Create Account" />
+
+    <!-- NEW: Session Controls (start/stop, fake sample) -->
+    <fragment
+        android:id="@+id/sessionControlsFragment"
+        android:name="com.team11.smartgym.ui.session.SessionControlsFragment"
+        android:label="Session Controls">
+        <action
+            android:id="@+id/action_controls_to_snapshot"
+            app:destination="@id/sessionsSnapshotFragment" />
+    </fragment>
+
+    <!-- NEW: Snapshot viewer (read-only last saved temp snapshot) -->
+    <fragment
+        android:id="@+id/sessionsSnapshotFragment"
+        android:name="com.team11.smartgym.ui.session.SessionsSnapshotFragment"
+        android:label="Session Snapshot" />
 </navigation>
