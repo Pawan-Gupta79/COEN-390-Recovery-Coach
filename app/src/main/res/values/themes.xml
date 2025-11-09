@@ -26,6 +26,7 @@
         <item name="colorError">@color/rc_error</item>
         <item name="colorOnError">@color/rc_onError</item>
 
+
     </style>
 
 </resources>

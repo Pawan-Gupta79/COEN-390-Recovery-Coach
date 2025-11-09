@@ -14,7 +14,15 @@ android {
         versionName "1.1"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildFeatures { viewBinding true }
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments += ["room.schemaLocation" : "$projectDir/schemas"]
+            }
+        }
     }
+
+
+
 
     buildTypes {
         release {
@@ -57,6 +65,7 @@ dependencies {
     implementation libs.room.runtime
     implementation libs.navigation.fragment
     implementation libs.navigation.ui
+    implementation libs.navigation.runtime
     annotationProcessor libs.room.compiler
 
     implementation libs.work.runtime

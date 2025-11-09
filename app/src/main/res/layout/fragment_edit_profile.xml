@@ -1,0 +1,227 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:fitsSystemWindows="true"
+    tools:context=".ui.EditProfileFragment">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="16dp"
+        android:paddingBottom="500dp"
+        android:gravity="top">
+
+        <TextView
+            android:id="@+id/email"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="8dp"
+            android:paddingVertical="12dp"
+            android:text="Email"
+            android:textSize="16sp" />
+
+        <EditText
+            android:id="@+id/insertEmail"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="8dp"
+            android:paddingVertical="12dp"
+            android:hint="Enter New Email"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/password"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="12dp"
+            android:text="Password"
+            android:textSize="16sp"
+            android:drawablePadding="8dp" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Enter New Password"
+            app:endIconMode="password_toggle"
+            app:endIconTint="@color/black">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/insertPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:textSize="16sp"
+                android:paddingVertical="12dp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Reenter New Password"
+            app:endIconMode="password_toggle"
+            app:endIconTint="@color/black">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/reinsertPassword"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="textPassword"
+                android:textSize="16sp"
+                android:paddingVertical="12dp" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <TextView
+            android:id="@+id/name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="12dp"
+            android:text="Name and Surname"
+            android:textSize="16sp"
+
+            android:drawablePadding="8dp" />
+
+        <EditText
+            android:id="@+id/insertName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="8dp"
+            android:paddingVertical="12dp"
+            android:hint="Enter New Name"
+            android:textSize="16sp" />
+
+        <EditText
+            android:id="@+id/insertSurname"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="8dp"
+            android:paddingVertical="12dp"
+            android:hint="Enter New Surname"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/username"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="12dp"
+            android:text="Username"
+            android:textSize="16sp"
+            android:drawablePadding="8dp" />
+
+        <EditText
+            android:id="@+id/insertUsername"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="8dp"
+            android:paddingVertical="12dp"
+            android:hint="Enter New Username"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/height"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="12dp"
+            android:text="Height"
+            android:textSize="16sp"
+            android:drawablePadding="8dp" />
+
+        <EditText
+            android:id="@+id/insertHeight"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="8dp"
+            android:paddingVertical="12dp"
+            android:hint="Enter New Height in cm"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/gender"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="12dp"
+            android:text="Gender"
+            android:textSize="16sp"
+            android:drawablePadding="8dp" />
+
+        <RadioGroup
+            android:id="@+id/genderGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <RadioButton
+                android:id="@+id/maleOption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Male"
+                android:textSize="16sp"
+                android:paddingEnd="32dp" />
+
+            <RadioButton
+                android:id="@+id/femaleOption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Female"
+                android:textSize="16sp" />
+
+        </RadioGroup>
+
+        <TextView
+            android:id="@+id/activityFrequency"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="12dp"
+            android:text="Activity Frequency"
+            android:textSize="16sp"
+
+            android:drawablePadding="8dp" />
+
+        <RadioGroup
+            android:id="@+id/activityFrequencyGroup"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <RadioButton
+                android:id="@+id/inactiveOption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="inactive \n(0-1 days/week)"
+                android:textSize="10sp"
+                android:paddingEnd="32dp" />
+
+            <RadioButton
+                android:id="@+id/moderateActiveOption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="moderate active \n(2-4 days/week)"
+                android:textSize="10sp" />
+
+            <RadioButton
+                android:id="@+id/activeOption"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="active \n(5-7 days/week)"
+                android:textSize="10sp" />
+
+        </RadioGroup>
+
+        <Button
+            android:id="@+id/save"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="8dp"
+            android:paddingVertical="12dp"
+            android:text="Save"
+            android:layout_marginTop="48dp"
+            android:textSize="16sp" />
+
+    </LinearLayout>
+</ScrollView>

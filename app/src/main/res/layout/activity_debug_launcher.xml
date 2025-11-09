@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Debug Launcher"
+            android:textStyle="bold"
+            android:textSize="22sp"
+            android:layout_marginBottom="16dp" />
+
+        <Button
+            android:id="@+id/btnOpenLiveHR"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open Live Heart Rate Screen" />
+
+        <Button
+            android:id="@+id/btnOpenScan"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open Scan Screen"
+            android:layout_marginTop="12dp" />
+
+        <Button
+            android:id="@+id/btnOpenDashboard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open Dashboard"
+            android:layout_marginTop="12dp" />
+
+        <Button
+            android:id="@+id/btnForceDisconnect"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Force Fake Disconnect"
+            android:layout_marginTop="12dp" />
+
+    </LinearLayout>
+</ScrollView>
