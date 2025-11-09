@@ -5,13 +5,13 @@ import android.content.Context;
 import androidx.room.Room;
 
 /**
- * Central place to provide:
- * - AppDatabase singleton
- * - SessionRepository singleton
- * - SessionController singleton
+ * Provides singletons for:
+ *  - AppDatabase
+ *  - SessionRepository
+ *  - SessionController
  *
- * ViewModels call DatabaseProvider.get(context)
- * to access the controllers & repositories.
+ * Dev note: allowMainThreadQueries() enabled for Sprint dev to avoid thread crashes.
+ * TODO [Sprint 3]: move DB writes to background (Executors) and remove allowMainThreadQueries().
  */
 public final class DatabaseProvider {
 
@@ -22,16 +22,16 @@ public final class DatabaseProvider {
     private final SessionController sessionController;
 
     private DatabaseProvider(Context appContext) {
-
         db = Room.databaseBuilder(appContext, AppDatabase.class, "smartgym.db")
                 .fallbackToDestructiveMigration()
+                .allowMainThreadQueries()   // ✅ quick unblock for Start/Stop flow
                 .build();
 
         sessionRepo = new SessionRepository(db.sessionDao());
         sessionController = new SessionController(sessionRepo);
     }
 
-    /** Static accessor for ViewModels. Always call with APPLICATION context. */
+    /** Always pass application context. */
     public static synchronized DatabaseProvider get(Context ctx) {
         if (INSTANCE == null) {
             INSTANCE = new DatabaseProvider(ctx.getApplicationContext());
@@ -39,17 +39,7 @@ public final class DatabaseProvider {
         return INSTANCE;
     }
 
-    // ---- Exposed getters ----
-
-    public AppDatabase getDb() {
-        return db;
-    }
-
-    public SessionRepository getSessionRepository() {
-        return sessionRepo;
-    }
-
-    public SessionController getSessionController() {
-        return sessionController;
-    }
+    public AppDatabase getDb() { return db; }
+    public SessionRepository getSessionRepository() { return sessionRepo; }
+    public SessionController getSessionController() { return sessionController; }
 }

@@ -12,8 +12,12 @@ import com.team11.smartgym.data.SessionController;
 import com.team11.smartgym.data.TempSessionSnapshot;
 
 /**
- * ViewModel that exposes session controls and last snapshot to the UI.
- * Now extends AndroidViewModel so we can access application context.
+ * ViewModel for session controls screen.
+ * - start/stop session
+ * - accept live HR samples
+ * - expose running state
+ * - expose last saved snapshot
+ * - expose live sample count (for quick feedback while running)
  */
 public class SessionViewModel extends AndroidViewModel {
 
@@ -21,29 +25,38 @@ public class SessionViewModel extends AndroidViewModel {
 
     private final MutableLiveData<Boolean> running = new MutableLiveData<>(false);
     private final MutableLiveData<TempSessionSnapshot> lastSnapshot = new MutableLiveData<>(null);
+    private final MutableLiveData<Integer> liveSampleCount = new MutableLiveData<>(0);
 
     public SessionViewModel(@NonNull Application app) {
         super(app);
         controller = DatabaseProvider.get(app).getSessionController();
     }
 
-    // LiveData getters
+    // ---- Exposed state ----
     public LiveData<Boolean> isRunning() { return running; }
     public LiveData<TempSessionSnapshot> lastSnapshot() { return lastSnapshot; }
+    public LiveData<Integer> liveSampleCount() { return liveSampleCount; }
 
-    // Actions
+    // ---- Actions ----
     public void start() {
+        if (Boolean.TRUE.equals(running.getValue())) return;
         controller.startSession();
-        running.postValue(true);
+        running.setValue(true);
+        liveSampleCount.setValue(0);
     }
 
     public void stop() {
+        if (!Boolean.TRUE.equals(running.getValue())) return;
         TempSessionSnapshot snap = controller.stopSessionAndReturnSnapshot();
-        running.postValue(false);
-        lastSnapshot.postValue(snap);
+        lastSnapshot.setValue(snap);          // show snapshot after STOP
+        running.setValue(false);
     }
 
+    /** Accept a BPM reading (used by Fake button or BLE sink). */
     public void onHeartRate(int bpm) {
-        controller.onHeartRate(bpm);
+        if (!Boolean.TRUE.equals(running.getValue())) return;
+        controller.onHeartRate(bpm);          // forwards to repo as Reading
+        Integer n = liveSampleCount.getValue();
+        liveSampleCount.setValue((n == null ? 0 : n) + 1);  // live feedback
     }
 }

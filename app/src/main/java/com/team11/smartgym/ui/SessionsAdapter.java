@@ -1,5 +1,6 @@
 package com.team11.smartgym.ui;
 
+import android.text.format.DateFormat;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,92 +10,69 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.team11.smartgym.R;
-import com.team11.smartgym.model.WorkoutSession;
+import com.team11.smartgym.data.Session;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-/**
- * Adapter for displaying workout sessions in a RecyclerView.
- */
 public class SessionsAdapter extends RecyclerView.Adapter<SessionsAdapter.SessionViewHolder> {
 
-    private List<WorkoutSession> sessions = new ArrayList<>();
-    private final OnSessionClickListener clickListener;
-    private final DateFormat dateFormat;
-    private final DateFormat timeFormat;
+    private final List<Session> list = new ArrayList<>();
 
-    public interface OnSessionClickListener {
-        void onSessionClick(WorkoutSession session);
-    }
-
-    public SessionsAdapter(OnSessionClickListener clickListener) {
-        this.clickListener = clickListener;
-        this.dateFormat = SimpleDateFormat.getDateInstance(DateFormat.MEDIUM, Locale.getDefault());
-        this.timeFormat = SimpleDateFormat.getTimeInstance(DateFormat.SHORT, Locale.getDefault());
-    }
-
-    public void setSessions(List<WorkoutSession> sessions) {
-        this.sessions = sessions != null ? sessions : new ArrayList<>();
+    public void submitList(List<Session> newList) {
+        list.clear();
+        if (newList != null) list.addAll(newList);
         notifyDataSetChanged();
     }
 
     @NonNull
     @Override
     public SessionViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext())
+        View row = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_session, parent, false);
-        return new SessionViewHolder(view);
+        return new SessionViewHolder(row);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull SessionViewHolder holder, int position) {
-        WorkoutSession session = sessions.get(position);
-        holder.bind(session);
+    public void onBindViewHolder(@NonNull SessionViewHolder h, int pos) {
+        Session s = list.get(pos);
+
+        String date = DateFormat.format("MMM dd, yyyy", s.startedAt).toString();
+        String time = DateFormat.format("HH:mm", s.startedAt).toString();
+
+        long durationMs = Math.max(0, s.endedAt - s.startedAt);
+        long min = durationMs / 60000;
+        long sec = (durationMs / 1000) % 60;
+
+        h.tvDate.setText(date);
+        h.tvTime.setText(time);
+        h.tvDevice.setText("HR Sensor");
+        h.tvDuration.setText(String.format(Locale.getDefault(), "%02d:%02d", min, sec));
+        h.tvAvgHr.setText(String.valueOf(s.avgBpm));
+        h.tvMaxHr.setText(String.valueOf(s.maxBpm));
+
+        String summary = String.format(Locale.getDefault(),
+                "Avg %d bpm  •  Max %d bpm", s.avgBpm, s.maxBpm);
+        h.tvSummary.setText(summary);
     }
 
     @Override
     public int getItemCount() {
-        return sessions.size();
+        return list.size();
     }
 
-    class SessionViewHolder extends RecyclerView.ViewHolder {
-        private final TextView tvDate;
-        private final TextView tvTime;
-        private final TextView tvDevice;
-        private final TextView tvDuration;
-        private final TextView tvAvgHr;
-        private final TextView tvMaxHr;
-
+    static final class SessionViewHolder extends RecyclerView.ViewHolder {
+        final TextView tvDate, tvTime, tvDevice, tvDuration, tvAvgHr, tvMaxHr, tvSummary;
         SessionViewHolder(@NonNull View itemView) {
             super(itemView);
-            tvDate = itemView.findViewById(R.id.tvSessionDate);
-            tvTime = itemView.findViewById(R.id.tvSessionTime);
-            tvDevice = itemView.findViewById(R.id.tvSessionDevice);
+            tvDate     = itemView.findViewById(R.id.tvSessionDate);
+            tvTime     = itemView.findViewById(R.id.tvSessionTime);
+            tvDevice   = itemView.findViewById(R.id.tvSessionDevice);
             tvDuration = itemView.findViewById(R.id.tvSessionDuration);
-            tvAvgHr = itemView.findViewById(R.id.tvSessionAvgHr);
-            tvMaxHr = itemView.findViewById(R.id.tvSessionMaxHr);
-        }
-
-        void bind(WorkoutSession session) {
-            Date startDate = new Date(session.getStartedAt());
-
-            tvDate.setText(dateFormat.format(startDate));
-            tvTime.setText(timeFormat.format(startDate));
-            tvDevice.setText(session.getDeviceName());
-            tvDuration.setText(session.getFormattedDuration());
-            tvAvgHr.setText(String.valueOf(session.getAvgHeartRate()));
-            tvMaxHr.setText(String.valueOf(session.getMaxHeartRate()));
-
-            itemView.setOnClickListener(v -> {
-                if (clickListener != null) {
-                    clickListener.onSessionClick(session);
-                }
-            });
+            tvAvgHr    = itemView.findViewById(R.id.tvSessionAvgHr);
+            tvMaxHr    = itemView.findViewById(R.id.tvSessionMaxHr);
+            tvSummary  = itemView.findViewById(R.id.tvSessionSummary);
         }
     }
 }

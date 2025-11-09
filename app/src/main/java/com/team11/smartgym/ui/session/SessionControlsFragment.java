@@ -20,7 +20,7 @@ import java.util.Locale;
 
 /**
  * Minimal UI to start/stop a session and show the last saved snapshot,
- * plus a button to navigate to the dedicated Snapshot viewer.
+ * plus a button to navigate to the Snapshot viewer.
  */
 public class SessionControlsFragment extends Fragment {
 
@@ -56,15 +56,26 @@ public class SessionControlsFragment extends Fragment {
             btnFake.setEnabled(isRunning);
         });
 
+        // Show live sample count while running (quick feedback)
+        vm.liveSampleCount().observe(getViewLifecycleOwner(), count -> {
+            Integer c = (count == null ? 0 : count);
+            // Append to state text so you see it increment
+            Boolean isRunning = vm.isRunning().getValue();
+            String prefix = (isRunning != null && isRunning) ? "Running" : "Idle";
+            tvState.setText(String.format(Locale.getDefault(), "%s • Samples: %d", prefix, c));
+        });
+
+        // Show the last saved snapshot AFTER stop
         vm.lastSnapshot().observe(getViewLifecycleOwner(), snap -> {
             tvLast.setText(formatSnapshot(snap));
         });
 
-        // Actions (fixed: use start() / stop())
+        // Actions
         btnStart.setOnClickListener(view -> vm.start());
+
         btnStop.setOnClickListener(view -> vm.stop());
 
-        // Fake sample for quick testing without BLE (optional)
+        // Fake sample for quick testing without BLE
         btnFake.setOnClickListener(view -> {
             int bpm = 60 + (int)(Math.random() * 90); // 60–150
             vm.onHeartRate(bpm);
@@ -79,13 +90,10 @@ public class SessionControlsFragment extends Fragment {
 
     private String formatSnapshot(@Nullable TempSessionSnapshot s) {
         if (s == null) return "No snapshot saved.";
-        String idShort = (s.tempId == null) ? "-" :
-                (s.tempId.length() > 8 ? s.tempId.substring(0, 8) : s.tempId);
         String stats = (s.stats == null) ? "-" :
                 String.format(Locale.getDefault(), "avg=%d, max=%d, invalid=%s",
                         s.stats.averageBpm, s.stats.maxBpm, s.stats.invalid);
-        return "ID " + idShort +
-                "\nStart: " + s.startMs +
+        return "Start: " + s.startMs +
                 "\nEnd:   " + s.endMs +
                 "\nSamples: " + s.samplesCount +
                 "\nStats: " + stats;
