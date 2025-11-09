@@ -7,9 +7,14 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.team11.smartgym.data.DatabaseProvider;
 import com.team11.smartgym.data.SessionController;
 import com.team11.smartgym.data.TempSessionSnapshot;
 
+/**
+ * ViewModel that exposes session controls and last snapshot to the UI.
+ * Now extends AndroidViewModel so we can access application context.
+ */
 public class SessionViewModel extends AndroidViewModel {
 
     private final SessionController controller;
@@ -17,37 +22,28 @@ public class SessionViewModel extends AndroidViewModel {
     private final MutableLiveData<Boolean> running = new MutableLiveData<>(false);
     private final MutableLiveData<TempSessionSnapshot> lastSnapshot = new MutableLiveData<>(null);
 
-    public SessionViewModel(@NonNull Application application) {
-        super(application);
-        controller = new SessionController(application.getApplicationContext());
-        // Preload any previously saved snapshot (optional)
-        lastSnapshot.setValue(controller.loadLastSnapshot());
+    public SessionViewModel(@NonNull Application app) {
+        super(app);
+        controller = DatabaseProvider.get(app).getSessionController();
     }
 
+    // LiveData getters
     public LiveData<Boolean> isRunning() { return running; }
     public LiveData<TempSessionSnapshot> lastSnapshot() { return lastSnapshot; }
 
-    /** Start a new live session (resets buffers). */
-    public void startSession() {
-        controller.start();
-        running.setValue(true);
+    // Actions
+    public void start() {
+        controller.startSession();
+        running.postValue(true);
     }
 
-    /** Stop, compute stats, save snapshot (carry-over), reset buffers. */
-    public void stopAndSave() {
-        TempSessionSnapshot snap = controller.stopAndSave();
-        lastSnapshot.setValue(snap);
-        running.setValue(false);
+    public void stop() {
+        TempSessionSnapshot snap = controller.stopSessionAndReturnSnapshot();
+        running.postValue(false);
+        lastSnapshot.postValue(snap);
     }
 
-    /** Feed heart rate samples during the live session (hook BLE callback to this). */
     public void onHeartRate(int bpm) {
-        controller.addSample(bpm);
-    }
-
-    /** Optional helpers */
-    public void clearLastSnapshot() {
-        controller.clearLastSnapshot();
-        lastSnapshot.setValue(null);
+        controller.onHeartRate(bpm);
     }
 }

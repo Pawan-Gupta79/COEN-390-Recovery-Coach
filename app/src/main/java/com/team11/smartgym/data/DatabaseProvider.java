@@ -1,32 +1,55 @@
 package com.team11.smartgym.data;
 
 import android.content.Context;
+
 import androidx.room.Room;
 
-/** Thread-safe singleton for AppDatabase. */
+/**
+ * Central place to provide:
+ * - AppDatabase singleton
+ * - SessionRepository singleton
+ * - SessionController singleton
+ *
+ * ViewModels call DatabaseProvider.get(context)
+ * to access the controllers & repositories.
+ */
 public final class DatabaseProvider {
-    private static volatile AppDatabase INSTANCE;
 
-    private DatabaseProvider() {}
+    private static DatabaseProvider INSTANCE;
 
-    public static AppDatabase get(Context context) {
-        AppDatabase local = INSTANCE;
-        if (local == null) {
-            synchronized (DatabaseProvider.class) {
-                local = INSTANCE;
-                if (local == null) {
-                    local = Room.databaseBuilder(
-                                    context.getApplicationContext(),
-                                    AppDatabase.class,
-                                    "smartgym.db"
-                            )
-                            // DEV ONLY: drop/regen on schema changes. Replace with proper migrations next sprint.
-                            .fallbackToDestructiveMigration()
-                            .build();
-                    INSTANCE = local;
-                }
-            }
+    private final AppDatabase db;
+    private final SessionRepository sessionRepo;
+    private final SessionController sessionController;
+
+    private DatabaseProvider(Context appContext) {
+
+        db = Room.databaseBuilder(appContext, AppDatabase.class, "smartgym.db")
+                .fallbackToDestructiveMigration()
+                .build();
+
+        sessionRepo = new SessionRepository(db.sessionDao());
+        sessionController = new SessionController(sessionRepo);
+    }
+
+    /** Static accessor for ViewModels. Always call with APPLICATION context. */
+    public static synchronized DatabaseProvider get(Context ctx) {
+        if (INSTANCE == null) {
+            INSTANCE = new DatabaseProvider(ctx.getApplicationContext());
         }
-        return local;
+        return INSTANCE;
+    }
+
+    // ---- Exposed getters ----
+
+    public AppDatabase getDb() {
+        return db;
+    }
+
+    public SessionRepository getSessionRepository() {
+        return sessionRepo;
+    }
+
+    public SessionController getSessionController() {
+        return sessionController;
     }
 }

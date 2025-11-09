@@ -1,77 +1,81 @@
 package com.team11.smartgym.data;
 
-import android.content.Context;
-
 import androidx.lifecycle.LiveData;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
- * Repository layer that wraps DAO operations.
- * Adds LiveData stream for non-blocking UI reads.
+ * Repository bridging DAOs and SessionController/ViewModels.
+ * Provides async write operations + LiveData read operations.
  */
 public class SessionRepository {
 
-    private final AppDatabase db;
+    private final SessionDao sessionDao;
+    private final ExecutorService io = Executors.newSingleThreadExecutor();
 
-    public SessionRepository(Context context) {
-        this.db = DatabaseProvider.get(context);
+    public SessionRepository(SessionDao dao) {
+        this.sessionDao = dao;
     }
 
     // ---------------------------------------------------------
-    // SESSION CREATION (called on Start)
+    //  CREATE SESSION  (required by SessionController)
     // ---------------------------------------------------------
-    public long createSession(long startMs) {
+    /**
+     * Create a new Session row with start timestamp only.
+     * Returns the DB-assigned sessionId.
+     */
+    public synchronized long createSession(long startMs) {
         Session s = new Session();
         s.startedAt = startMs;
         s.endedAt = 0;
         s.avgBpm = 0;
         s.maxBpm = 0;
-        return db.sessionDao().insertSession(s);
+
+        return sessionDao.insertSession(s);
     }
 
     // ---------------------------------------------------------
-    // ADD HR SAMPLE (during session)
-    // ---------------------------------------------------------
-    public void addReading(long sessionId, int bpm) {
-        Reading r = new Reading();
-        r.sessionId = sessionId;
-        r.timestamp = System.currentTimeMillis();
-        r.bpm = bpm;
-        db.sessionDao().insertReading(r);
-    }
-
-    // ---------------------------------------------------------
-    // FINALIZE SESSION (avg/max + end time)
+    //  FINALIZE SUMMARY  (avg/max/end time)
     // ---------------------------------------------------------
     public void finalizeSession(long sessionId, int avg, int max, long endMs) {
-        db.sessionDao().finalizeSummary(sessionId, endMs, avg, max);
+        io.execute(() -> sessionDao.finalizeSummary(sessionId, endMs, avg, max));
     }
 
     // ---------------------------------------------------------
-    // QUERIES
+    //  READ OPERATIONS
     // ---------------------------------------------------------
-    public Session getSession(long id) {
-        return db.sessionDao().getSessionById(id);
+    public LiveData<List<Session>> getAllSessionsLive() {
+        return sessionDao.getAllSessionsLive();
     }
 
-    public List<Session> getAllSessions() {
-        return db.sessionDao().listSessions();
-    }
-
-    /** 🔹 Stream for UI: observe sessions without blocking main thread. */
-    public LiveData<List<Session>> observeSessions() {
-        return db.sessionDao().observeSessions();
-    }
-
-    public List<Reading> getReadingsForSession(long sessionId) {
-        return db.sessionDao().getReadingsForSession(sessionId);
+    public LiveData<Session> getSessionLive(long id) {
+        return sessionDao.getSessionLive(id);
     }
 
     // ---------------------------------------------------------
-    // DELETE OPS (used rarely)
+    //  INSERT HR READINGS
     // ---------------------------------------------------------
-    public void deleteAllSessions() {
-        db.sessionDao().deleteAllSessions();
+    public void insertReading(Reading r) {
+        io.execute(() -> sessionDao.insertReading(r));
+    }
+
+    // ---------------------------------------------------------
+    //  ADVICE ENGINE (DS-07.3)
+    // ---------------------------------------------------------
+    public LiveData<String> getAdviceForSession(long sessionId) {
+        return androidx.lifecycle.Transformations.map(
+                sessionDao.getSessionLive(sessionId),
+                session -> {
+                    if (session == null) return "NO SESSION";
+
+                    // Sprint 3 will compute actual RMSSD/LF/HF
+                    Double rmssd = null;
+                    Double lfHf = null;
+
+                    return AdviceEngine.computeAdvice(rmssd, lfHf);
+                }
+        );
     }
 }

@@ -60,9 +60,9 @@ public class SessionControlsFragment extends Fragment {
             tvLast.setText(formatSnapshot(snap));
         });
 
-        // Actions
-        btnStart.setOnClickListener(view -> vm.startSession());
-        btnStop.setOnClickListener(view -> vm.stopAndSave());
+        // Actions (fixed: use start() / stop())
+        btnStart.setOnClickListener(view -> vm.start());
+        btnStop.setOnClickListener(view -> vm.stop());
 
         // Fake sample for quick testing without BLE (optional)
         btnFake.setOnClickListener(view -> {

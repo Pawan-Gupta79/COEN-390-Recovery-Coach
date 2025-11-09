@@ -3,26 +3,38 @@ package com.team11.smartgym.ble;
 import android.os.Handler;
 import android.os.Looper;
 
-import com.team11.smartgym.ui.session.SessionViewModel;
+import androidx.annotation.NonNull;
+
+import com.team11.smartgym.data.SessionController;
 
 /**
- * Thread-safe bridge between BLE notifications and SessionViewModel.
- *
- * BLE callbacks happen on binder threads, not the UI thread — so this class
- * posts BPM values to the main thread safely.
+ * HrSampleSink: receives raw BPM from BLE and forwards to SessionController.
+ * NO ViewModel dependency (hardware → controller only).
  */
 public final class HrSampleSink {
 
-    private final SessionViewModel viewModel;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private final SessionController controller;
 
-    public HrSampleSink(SessionViewModel vm) {
-        this.viewModel = vm;
+    public HrSampleSink(@NonNull SessionController controller) {
+        this.controller = controller;
     }
 
-    /** Call this from your BLE HR notification callback. */
-    public void onHrValue(final int bpm) {
-        // Ensure we always update ViewModel on main/UI thread
-        mainHandler.post(() -> viewModel.onHeartRate(bpm));
+    /** Common entry (if your BLE stack calls this) */
+    public void onHeartRate(final int bpm) {
+        forward(bpm);
+    }
+
+    /** Alternate name kept for compatibility with existing call sites */
+    public void onNewHeartRate(final int bpm) {
+        forward(bpm);
+    }
+
+    private void forward(final int bpm) {
+        mainHandler.post(() -> {
+            if (controller != null) {
+                controller.addHeartRate(System.currentTimeMillis(), bpm);
+            }
+        });
     }
 }

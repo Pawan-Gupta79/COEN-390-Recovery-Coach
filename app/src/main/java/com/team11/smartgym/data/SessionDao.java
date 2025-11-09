@@ -10,13 +10,14 @@ import androidx.room.Update;
 import java.util.List;
 
 /**
- * DAO for Session + Reading (your existing HR sample entity).
- * Extended to expose LiveData stream for non-blocking UI.
+ * DAO for sessions + HR readings.
+ * Includes both synchronous and LiveData queries.
  */
 @Dao
 public interface SessionDao {
 
-    // ------- Session CRUD -------
+    // ------------------------- SESSION CRUD -------------------------
+
     @Insert
     long insertSession(Session s);
 
@@ -32,16 +33,20 @@ public interface SessionDao {
     @Query("DELETE FROM Session")
     int deleteAllSessions();
 
-    // Synchronous list (OK for background threads)
     @Query("SELECT * FROM Session ORDER BY startedAt DESC")
     List<Session> listSessions();
 
-    // 🔹 Non-blocking stream for UI (meets acceptance #2)
+    // ---------- LiveData versions (required by SessionRepository) ----------
+
     @Query("SELECT * FROM Session ORDER BY startedAt DESC")
-    LiveData<List<Session>> observeSessions();
+    LiveData<List<Session>> getAllSessionsLive();
+
+    @Query("SELECT * FROM Session WHERE id = :id LIMIT 1")
+    LiveData<Session> getSessionLive(long id);
 
 
-    // ------- Reading CRUD (your existing HR sample entity) -------
+    // ------------------------- READING CRUD -------------------------
+
     @Insert
     void insertReading(Reading r);
 
@@ -55,7 +60,8 @@ public interface SessionDao {
     int deleteReadingsForSession(long sessionId);
 
 
-    // ------- Summary Finalization (avg/max/end) -------
-    @Query("UPDATE Session SET endedAt = :endedAt, avgBpm = :avg, maxBpm = :max WHERE id = :sessionId")
-    int finalizeSummary(long sessionId, long endedAt, int avg, int max);
+    // ---------------- Session finalization (summary) ----------------
+
+    @Query("UPDATE Session SET endedAt = :endedAt, avgBpm = :avgBpm, maxBpm = :maxBpm WHERE id = :sessionId")
+    int finalizeSummary(long sessionId, long endedAt, int avgBpm, int maxBpm);
 }
