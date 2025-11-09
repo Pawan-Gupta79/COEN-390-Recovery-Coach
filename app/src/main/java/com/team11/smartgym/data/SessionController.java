@@ -13,15 +13,19 @@ import java.util.List;
  * - Stop: computes stats (ignoring the first N ms), saves TempSessionSnapshot via TempSessionStore,
  *         then resets buffers (carry-over logic for DS-01.7)
  *
- * This DOES NOT write to Room DB. That's for Sprint 3.
+ * Notes (DS-01.8):
+ * - We clamp BPM samples to [0, 220] to avoid skew from impossible spikes.
+ * - Ignore-window is configurable via setIgnoreWindowMs().
+ * - No DB writes here (Sprint 3 will handle Room).
  */
 public final class SessionController {
 
-    // --------- Configuration ----------
-    /** Milliseconds to ignore at session start due to unstable readings (3–5s). */
-    private long ignoreWindowMs = 4000L; // default 4s; change via setIgnoreWindowMs()
+    /** Milliseconds to ignore at session start due to unstable readings (3–5s typical). */
+    private long ignoreWindowMs = 4000L; // default 4s
 
-    // --------- Runtime state ----------
+    /** Hard ceiling for plausible BPM to mitigate sensor spikes. */
+    private static final int MAX_BPM = 220;
+
     private boolean running = false;
     private long startMs = 0L;
 
@@ -47,9 +51,8 @@ public final class SessionController {
      */
     public synchronized void addSample(int bpm) {
         if (!running) return;
-        if (bpm < 0) bpm = 0;
         long t = System.currentTimeMillis();
-        samples.add(new Sample(t, bpm));
+        samples.add(new Sample(t, clampBpm(bpm)));
     }
 
     /**
@@ -57,7 +60,7 @@ public final class SessionController {
      *  - compute stats ignoring the first {@link #ignoreWindowMs} milliseconds
      *  - create TempSessionSnapshot
      *  - save to TempSessionStore
-     *  - reset buffers (carry-over complete)
+     *  - reset buffers (carry-over requirement)
      *
      * @return the saved TempSessionSnapshot, or null if session wasn't running
      */
@@ -94,7 +97,7 @@ public final class SessionController {
 
         IntSummaryStatistics s = samples.stream()
                 .filter(x -> x.timestampMs >= cutoff)
-                .mapToInt(x -> x.bpm)
+                .mapToInt(x -> x.bpm) // already clamped on insert
                 .summaryStatistics();
 
         if (s.getCount() == 0) {
@@ -103,6 +106,12 @@ public final class SessionController {
         int avg = (int) Math.round(s.getAverage());
         int max = s.getMax();
         return new Stats(avg, max, false);
+    }
+
+    private static int clampBpm(int bpm) {
+        if (bpm < 0) return 0;
+        if (bpm > MAX_BPM) return MAX_BPM;
+        return bpm;
     }
 
     // ---------- Public utilities ----------
@@ -125,7 +134,12 @@ public final class SessionController {
         return store.load();
     }
 
-    /** Optional: clear the last snapshot. */
+    /** Optional: read back all temp snapshots (oldest→newest). */
+    public List<TempSessionSnapshot> loadAllSnapshots() {
+        return store.loadAll();
+    }
+
+    /** Optional: clear the last snapshot and history. */
     public void clearLastSnapshot() {
         store.clear();
     }

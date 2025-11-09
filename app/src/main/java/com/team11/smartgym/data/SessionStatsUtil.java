@@ -5,11 +5,14 @@ import java.util.List;
 
 /**
  * Pure utility to compute average/max BPM while ignoring an initial unstable window.
- * This mirrors the logic used by SessionController, but is exposed for unit testing.
+ * Also clamps BPM into a physiological range [0, 220] to avoid skew from outliers/noise.
  */
 public final class SessionStatsUtil {
 
     private SessionStatsUtil() {}
+
+    /** Hard ceiling for plausible BPM. */
+    private static final int MAX_BPM = 220;
 
     /**
      * Compute stats from timestamped BPM samples, ignoring the first ignoreMs after startMs.
@@ -27,7 +30,7 @@ public final class SessionStatsUtil {
 
         IntSummaryStatistics s = samples.stream()
                 .filter(x -> x.timestampMs >= cutoff)
-                .mapToInt(x -> Math.max(0, x.bpm))
+                .mapToInt(x -> clampBpm(x.bpm))
                 .summaryStatistics();
 
         if (s.getCount() == 0) {
@@ -36,6 +39,13 @@ public final class SessionStatsUtil {
         int avg = (int) Math.round(s.getAverage());
         int max = s.getMax();
         return new SessionStats(avg, max, false);
+    }
+
+    /** Clamp BPM to [0, MAX_BPM]. */
+    private static int clampBpm(int bpm) {
+        if (bpm < 0) return 0;
+        if (bpm > MAX_BPM) return MAX_BPM;
+        return bpm;
     }
 
     /** Minimal immutable sample used for tests and utilities. */
