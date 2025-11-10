@@ -100,6 +100,11 @@
             app:destination="@id/sessionsSnapshotFragment" />
     </fragment>
 
+    <fragment
+        android:id="@+id/overviewFragment"
+        android:name="com.team11.smartgym.ui.OverviewFragment"
+        android:label="Overview" />
+
     <!-- NEW: Snapshot viewer (read-only last saved temp snapshot) -->
     <fragment
         android:id="@+id/sessionsSnapshotFragment"
