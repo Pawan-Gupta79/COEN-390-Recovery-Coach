@@ -104,7 +104,7 @@ public class SessionsFragment extends Fragment {
         return v;
     }
 
-    private void onSessionClick(Session session) {
+    private void onSessionClick(WorkoutSession session) {
         String message = "Session selected: " + session.getId();
         SnackbarUtil.show(requireView(), message);
     }
