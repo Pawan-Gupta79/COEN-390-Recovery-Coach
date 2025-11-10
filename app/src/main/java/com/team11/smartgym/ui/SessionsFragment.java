@@ -24,6 +24,7 @@ import com.team11.smartgym.ui.session.SessionViewModel;
 
 import java.util.List;
 import java.util.Locale;
+import androidx.navigation.Navigation;
 
 public class SessionsFragment extends Fragment {
 
