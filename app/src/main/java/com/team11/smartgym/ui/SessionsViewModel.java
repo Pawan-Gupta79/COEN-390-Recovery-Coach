@@ -4,7 +4,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModel;
 
-import com.team11.smartgym.data.WorkoutSession;
+import com.team11.smartgym.model.WorkoutSession;
 
 import java.util.ArrayList;
 import java.util.Collections;
