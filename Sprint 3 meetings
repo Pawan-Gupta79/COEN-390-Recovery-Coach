@@ -1,0 +1,48 @@
+Scrum meeting 1 - Sprint 3
+
+11 November, Teusday
+
+Started 05:08 PM
+Tasks assigning discussion
+
+William proposes doing DS-03
+alexander - proposes someone making code for fake hr data. 
+pawan - takes the task for fake hr data. 
+pawan proposes commenting code so everyone knows what is happening.
+proposed - someone needs to do the login code clean up and make them into one file. 
+
+How the UI should go :
+On second page- session -> Choose workout -> 
+On main page -> User clicks Start workout -> Workout and Session start simultaneously and user is said to choose a workout
+
+second page - just info on previous sessions and an overview button . 
+
+arnav- doing hardware 
+
+assignments- 
+arnav- doing hardware tasks, working on connection as well.
+pawan - proposes someone making code for fake hr data. 
+William proposes doing DS-03
+thaos - working on different logins. 
+alexander - ui changes to make app consistent
+Victor - 
+
+status of hardware - HW-01, HW-02 working, need to work on connecting to the app. 
+Arnav proposes making a small simple app to connect to so know if it works, then integrate it into the main app. 
+
+need to set up logic to take in continous data until the user presses stop activity/stop workout. 
+
+discussion regarding hardware connection and Victor's tasks
+
+another task for arnav - fixing arduino code bug so victor can work on bluetooth conection. need till Wednesday, 11 November.
+once fixed, victor works on the bluetooth connection. 
+
+Victor - Works on test dosument , then on bluetooth code.
+
+Next meeting - 5 PM Thursday
+Meeting ended 05:44 PM.
+
+
+
+
+
