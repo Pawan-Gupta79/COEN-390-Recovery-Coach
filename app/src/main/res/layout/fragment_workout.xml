@@ -5,6 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
+    <!-- Device name -->
     <TextView
         android:id="@+id/tvWorkoutDevice"
         android:layout_width="wrap_content"
@@ -13,6 +14,7 @@
         android:textSize="18sp"
         android:text="@string/workout_device_unknown" />
 
+    <!-- Started at -->
     <TextView
         android:id="@+id/tvWorkoutStarted"
         android:layout_width="wrap_content"
@@ -20,6 +22,7 @@
         android:layout_marginTop="8dp"
         android:text="@string/workout_started_fmt" />
 
+    <!-- Status text (used by WorkoutFragment as tvStatus) -->
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="wrap_content"
@@ -30,6 +33,7 @@
         android:gravity="center"
         android:layout_gravity="center" />
 
+    <!-- Timer text (used by WorkoutFragment as tvTimer) -->
     <TextView
         android:id="@+id/tvTimer"
         android:layout_width="wrap_content"
@@ -41,6 +45,7 @@
         android:layout_marginTop="16dp"
         android:layout_gravity="center_horizontal" />
 
+    <!-- Pause / Start button (btnPause) -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnPause"
         android:layout_width="match_parent"
@@ -49,6 +54,7 @@
         android:text="Pause Workout"
         android:enabled="true" />
 
+    <!-- End / Save button (btnEnd) -->
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="match_parent"
@@ -56,6 +62,7 @@
         android:gravity="center"
         android:layout_marginTop="8dp">
 
+        <!-- Cancel button (btnCancel) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnEnd"
             android:layout_width="0dp"
