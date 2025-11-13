@@ -9,7 +9,11 @@ public class User {
     public int id;
 
     public String username;
-    public String password;
+
+    // Authentication (hashed password only)
+    public String passwordHash;
+    public String passwordSalt;
+    public int passwordIterations;
 
     public String name;
     public String surname;

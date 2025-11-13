@@ -47,14 +47,13 @@
     <string name="login_email_hint">Email</string>
     <string name="login_password_hint">Password</string>
     <string name="login_button">Log in</string>
-    <string name="login_demo_hint">Demo: user@example.com / password123</string>
+    <string name="login_demo_hint">Use your account email and password.</string>
     <string name="err_invalid_email">Please enter a valid email.</string>
     <string name="err_invalid_password">Password must be at least 6 characters.</string>
     <string name="err_fix_inputs">Please fix the highlighted fields.</string>
     <string name="err_bad_credentials">Invalid email or password.</string>
     <string name="login_success">Login successful!</string>
-    <string name="demo_email">user@example.com</string>
-    <string name="demo_pass">password123</string>
+    <string name="logout_confirm_message">Are you sure you want to log out?</string>
 
     <!-- Settings / prefs -->
     <string name="auto_reconnect">Auto-reconnect to last device</string>

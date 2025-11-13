@@ -9,6 +9,7 @@ public class UserRepo {
 
     private final UserDao userDao;
     private final ExecutorService executorService;
+
     public UserRepo(Context context) {
         AppDb db = AppDb.get(context);
         userDao = db.userDao();
@@ -23,12 +24,28 @@ public class UserRepo {
         void onResult(User user);
     }
 
-    public void login(String email, String password, LoginCallback callback) {
+    /**
+     * Login by email + plaintext password.
+     * This method hashes the plaintext and compares it to the stored hash+salt.
+     */
+    public void login(String email, String plainPassword, LoginCallback callback) {
         executorService.execute(() -> {
-            User user = userDao.login(email, password);
-            callback.onResult(user);
+            User user = userDao.getUserByEmail(email);
+            if (user == null) {
+                callback.onResult(null);
+                return;
+            }
+
+            boolean ok = PasswordHasher.verifyPassword(
+                    plainPassword,
+                    user.passwordHash,
+                    user.passwordSalt,
+                    user.passwordIterations
+            );
+            callback.onResult(ok ? user : null);
         });
     }
+
     public interface GetUserCallback {
         void onResult(User user);
     }

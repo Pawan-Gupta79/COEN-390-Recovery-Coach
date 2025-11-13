@@ -18,6 +18,8 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         android:text="@string/theme_follows_system" />
+
+    <!-- Login link -->
     <TextView
         android:id="@+id/login"
         android:layout_width="match_parent"
@@ -31,6 +33,7 @@
         android:background="@drawable/box_border"
         android:drawablePadding="8dp" />
 
+    <!-- Edit profile -->
     <TextView
         android:id="@+id/editProfile"
         android:layout_width="match_parent"
@@ -44,6 +47,7 @@
         android:background="@drawable/box_border"
         android:drawablePadding="8dp" />
 
+    <!-- View profile -->
     <TextView
         android:id="@+id/viewProfile"
         android:layout_width="match_parent"
@@ -63,26 +67,20 @@
         android:background="?attr/colorOutline"
         android:layout_marginVertical="20dp" />
 
-    <Button
-        android:id="@+id/logout"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:drawablePadding="8dp"
-        android:paddingVertical="12dp"
-        android:text="Logout"
-        android:backgroundTint="#FF0000"
-        android:layout_marginBottom="20dp"
-        android:textSize="16sp" />
-
+    <!-- Single Logout button (MaterialButton) -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnLogout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:paddingVertical="12dp"
         android:text="@string/logout"
         app:icon="@android:drawable/ic_lock_power_off"
         app:iconGravity="textStart"
         app:iconPadding="12dp"
         style="@style/Widget.Material3.Button.OutlinedButton" />
+
+    <!-- Debug button -->
     <Button
         android:id="@+id/btnDebugLiveHr"
         android:layout_width="match_parent"

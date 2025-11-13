@@ -4,7 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-
+import com.team11.smartgym.data.PasswordHasher;
 import androidx.fragment.app.Fragment;
 
 import android.view.LayoutInflater;
@@ -68,7 +68,7 @@ public class EditProfileFragment extends Fragment {
                     currentUser = user;
                     requireActivity().runOnUiThread(() -> {
                         email.setText(user.email);
-                        password.setText(user.password);
+                        password.setText("");
                         name.setText(user.name);
                         surname.setText(user.surname);
                         username.setText(user.username);
@@ -138,7 +138,15 @@ public class EditProfileFragment extends Fragment {
     }
     private void saveProfileChanges() {
         currentUser.email = email.getText().toString();
-        currentUser.password = password.getText().toString();
+
+        String newPassword = password.getText().toString();
+        if (!newPassword.isEmpty()) {
+            PasswordHasher.HashedPassword hp = PasswordHasher.hashPassword(newPassword);
+            currentUser.passwordHash = hp.hashBase64;
+            currentUser.passwordSalt = hp.saltBase64;
+            currentUser.passwordIterations = hp.iterations;
+        }
+
         currentUser.name = name.getText().toString();
         currentUser.surname = surname.getText().toString();
         currentUser.username = username.getText().toString();
