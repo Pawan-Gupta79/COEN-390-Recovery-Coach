@@ -12,6 +12,8 @@ public class WorkoutSession {
     private final int maxHeartRate;
     private final int duration; // in seconds
 
+    private final String heartRate;
+
     public WorkoutSession(long id, String deviceName, long startedAt, long endedAt,
                           int avgHeartRate, int maxHeartRate, int duration) {
         this.id = id;
@@ -21,6 +23,18 @@ public class WorkoutSession {
         this.avgHeartRate = avgHeartRate;
         this.maxHeartRate = maxHeartRate;
         this.duration = duration;
+        this.heartRate = "";
+    }
+    public WorkoutSession(long id, String deviceName, long startedAt, long endedAt,
+                          int avgHeartRate, int maxHeartRate, int duration, String heartRate) {
+        this.id = id;
+        this.deviceName = deviceName;
+        this.startedAt = startedAt;
+        this.endedAt = endedAt;
+        this.avgHeartRate = avgHeartRate;
+        this.maxHeartRate = maxHeartRate;
+        this.duration = duration;
+        this.heartRate = heartRate;                                                                 //saves a string of heartrate "bpm1, bpm2, bpm3, ..."
     }
 
     public long getId() {

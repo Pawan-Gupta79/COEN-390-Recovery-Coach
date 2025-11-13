@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment;
 
 import com.google.android.material.snackbar.Snackbar;
 import com.team11.smartgym.R;
+import com.team11.smartgym.model.WorkoutSession; // Added import
 
 import java.util.Locale;
 
@@ -209,16 +210,24 @@ public class WorkoutFragment extends Fragment {
         handler.removeCallbacks(timerRunnable);
         handler.removeCallbacks(countdownRunnable);
 
-        long totalElapsedSec = (System.currentTimeMillis() - startTime + pauseOffset) / 1000;
+        long endTime = System.currentTimeMillis();
+        long totalElapsedSec = (endTime - startTime + pauseOffset) / 1000;
 
         if (save) {
-            // TODO: plug back your Session / SessionRepo saving here if needed.
-            // Example (commented out so it compiles without those classes):
-            // Session s = new Session(selectedActivity, totalElapsedSec, activityBpm.toString(), System.currentTimeMillis());
-            // SessionRepo.save(s);
+            // Create a WorkoutSession instance to store the workout details
+            WorkoutSession session = new WorkoutSession(
+                    System.currentTimeMillis(),                              // id
+                    selectedActivity,                                        // deviceName
+                    startedAtFromArgs == 0L ? startTime : startedAtFromArgs, // startedAt
+                    endTime,                                                 // endedAt
+                    0,                                                       // avgHeartRate (placeholder)  //TODO CHANGE THIS TO THE RIGHT THING
+                    0,                                                       // maxHeartRate (placeholder)
+                    (int) totalElapsedSec,                                   // duration in seconds
+                    activityBpm.toString()                                   // saves a string of heartrate "bpm1, bpm2, bpm3, ..."
+            );
 
             Snackbar.make(requireView(),
-                    "Session saved (" + totalElapsedSec + " s)",
+                    "Session saved (" + session.getFormattedDuration() + ")",
                     Snackbar.LENGTH_SHORT).show();
         }
 
