@@ -84,6 +84,8 @@
 
     <!-- Debug label (optional, for Settings debug button) -->
     <string name="title_live_hr">Live HR (Debug)</string>
-
     <string name="start">Start</string>
+    <string name="sessions_title">Workout Sessions</string>
+    <string name="sessions_empty">No sessions yet. Start a workout to see it here.</string>
+
 </resources>
