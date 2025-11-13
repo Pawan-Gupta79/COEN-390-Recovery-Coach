@@ -3,6 +3,7 @@ package com.team11.smartgym.ui;
 import android.os.Bundle;
 
 import androidx.fragment.app.Fragment;
+import com.team11.smartgym.data.PasswordHasher;
 
 import android.view.LayoutInflater;
 import android.view.View;
@@ -122,7 +123,11 @@ public class CreateAccountFragment extends Fragment {
     private void createUser() {
         User user = new User();
         user.email = email.getText().toString();
-        user.password = password.getText().toString();
+        String plainPassword = password.getText().toString();
+        PasswordHasher.HashedPassword hp = PasswordHasher.hashPassword(plainPassword);
+        user.passwordHash = hp.hashBase64;
+        user.passwordSalt = hp.saltBase64;
+        user.passwordIterations = hp.iterations;
         user.name = name.getText().toString();
         user.surname = surname.getText().toString();
         user.username = username.getText().toString();

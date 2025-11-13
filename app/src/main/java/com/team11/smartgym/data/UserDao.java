@@ -14,8 +14,8 @@ public interface UserDao {
     @Query("SELECT * FROM User WHERE username = :username")
     User getUserByUsername(String username);
 
-    @Query("SELECT * FROM User WHERE email = :email AND password = :password LIMIT 1")
-    User login(String email, String password);
+    @Query("SELECT * FROM User WHERE email = :email LIMIT 1")
+    User getUserByEmail(String email);
 
     @Query("SELECT * FROM User WHERE id = :id LIMIT 1")
     User getUserById(int id);
@@ -25,5 +25,4 @@ public interface UserDao {
 
     @Update
     void updateUser(User user);
-
 }
