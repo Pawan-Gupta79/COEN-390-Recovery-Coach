@@ -56,6 +56,26 @@ Time spent: 5 hours
 Work till next scrum meeting: Test and Defination of Done documentation, more work if feasible. 
 Proposal for next scrum meeting time: Anytime next sunday on 16 November.
 
+William –
+What I did:
+Stability Fix PR – restored the app after UI-8 regressions (Sessions, Workout, Settings).
+DS-03 Secure Authentication – added hashed+salted password storage, unified login flow, account creation screen, and app-wide credential validation.
+DS-04 BLE Heart-Rate Improvements – added HR packet parsing, spike filtering, smoothing, null-handling, and full unit test coverage (all passing).
+Confirmed everything builds cleanly and works in-app.
+I cannot test with the real HR sensor, so another team member will need to validate real BLE readings later.
+
+Time spent: 12 hours total.
+
+Work until next scrum meeting: Begin DS-05 + DS-06:
+DS-05 (Reconnect System):
+05.1 Reconnect state machine (Idle/Reconnecting/Connected/Failed + backoff).
+05.2 Reconnect UI feedback (banners, status labels, retry prompts).
+05.3 Reconnect integration tests.
+DS-06 (Session Storage):
+06.1 Create session row on Start.
+06.2 Batch-insert HR samples.
+06.3 Flush + finalize on Stop.
+06.4 Schema validation / migrations.
+
+Next meeting: Sunday, Nov 16 — anytime works for me.
  
-
-
