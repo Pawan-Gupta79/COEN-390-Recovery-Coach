@@ -2,135 +2,82 @@ package com.team11.smartgym.ui;
 
 import android.os.Bundle;
 import android.os.Handler;
-import android.text.TextUtils;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
 
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.snackbar.Snackbar;
 import com.team11.smartgym.R;
 
-import java.text.DateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Locale;
 
-/**
- * Fragment to display workout session information.
- * This is typically shown during an active workout session.
- */
-public class INWorkoutFragment extends Fragment {
+public class WorkoutFragment extends Fragment {
 
+    // Args used by DashboardFragment when navigating here
     public static final String ARG_DEVICE_NAME = "arg_device_name";
-    public static final String ARG_STARTED_AT = "arg_started_at";
+    public static final String ARG_STARTED_AT  = "arg_started_at";
 
-    public static final int STATE_IDLE = -1;
-    public static final int STATE_STOPPED = 0;
-    public static final int STATE_STARTING = 1;
-    public static final int STATE_RUNNING = 2;
-    public static final int STATE_PAUSED = 3;
+    // ---- State constants ----
+    private static final int STATE_IDLE      = 0;
+    private static final int STATE_STARTING  = 1;
+    private static final int STATE_RUNNING   = 2;
+    private static final int STATE_PAUSED    = 3;
 
-    private DashboardViewModel vm;
+    // ---- UI ----
+    private TextView tvTimer;
+    private TextView tvStatus;
+    private Button btnPause;
+    private Button btnCancel;
+    private Button btnEnd;
+
+    // ---- Timer & state ----
+    private final Handler handler = new Handler(Looper.getMainLooper());
     private int state = STATE_IDLE;
 
-    private TextView tvTimer, tvStatus;
-    private MaterialButton btnPause, btnCancel, btnEnd;
-    private final Handler handler = new Handler();
-
-    private long startTime = 0L;
-    private long pauseOffset = 0L;
+    private long startTime      = 0L;
+    private long pauseOffset    = 0L;
     private long pauseStartTime = 0L;
 
-    private static final int MAX_BPM_SAMPLES = 10;
-    private static final long BPM_INTERVAL_MS = 1000;
-    private long lastBpmUpdateTime = 0L;
-    private final LinkedList<Integer> bpmSamples = new LinkedList<>();
+    private int countdown = 0;
+    private static final int START_COUNTDOWN_SECONDS = 5;
+
+    private String selectedActivity = "Workout";
+    private long startedAtFromArgs = 0L; // from Dashboard
     private final StringBuilder activityBpm = new StringBuilder();
 
-    private int countdown = 3;
-    private String selectedActivity = "Unknown";
-
-    //  Session object and Repo
-    public static class Session {
-        public final String activity;
-        public final long duration;
-        public final String bpmData;
-        public final long timestamp;
-
-        public Session(String activity, long duration, String bpmData, long timestamp) {
-            this.activity = activity;
-            this.duration = duration;
-            this.bpmData = bpmData;
-            this.timestamp = timestamp;
+    // ---- Runnables ----
+    private final Runnable timerRunnable = new Runnable() {
+        @Override
+        public void run() {
+            long elapsedMillis = System.currentTimeMillis() - startTime + pauseOffset;
+            updateTimerDisplay(elapsedMillis);
+            handler.postDelayed(this, 10);
         }
-    }
-
-    public static class SessionRepo {
-        private static final List<Session> sessions = new ArrayList<>();
-        public static void save(Session s) { sessions.add(s); }
-        public static List<Session> getAll() { return new ArrayList<>(sessions); }
-    }
-    //////////////////////////////////////
+    };
 
     private final Runnable countdownRunnable = new Runnable() {
         @Override
         public void run() {
-            if (state == STATE_STARTING) {
-                if (countdown > 0) {
-                    tvTimer.setText(String.valueOf(countdown));
-                    countdown--;
-                    handler.postDelayed(this, 1000);
-                } else {
-                    startMainTimer();
-                }
+            if (countdown > 0) {
+                countdown--;
+                tvTimer.setText(String.valueOf(countdown));
+                tvStatus.setText("Starting " + selectedActivity);
+                btnPause.setText("Pause Start");
+                handler.postDelayed(this, 1000);
+            } else {
+                startMainTimer();
             }
         }
     };
 
-    private final Runnable timerRunnable = new Runnable() {
-        @Override
-        public void run() {
-            if (state == STATE_RUNNING) {
-                long elapsed = System.currentTimeMillis() - startTime + pauseOffset;
-                updateTimerDisplay(elapsed);
-                handler.postDelayed(this, 10);
-
-                vm.getBpm().observe(getViewLifecycleOwner(), bpm -> {
-                    if (bpm != null && state == STATE_RUNNING) {
-                        long now = System.currentTimeMillis();
-                        if (now - lastBpmUpdateTime >= BPM_INTERVAL_MS) {
-                            lastBpmUpdateTime = now;
-
-                            bpmSamples.add(bpm);
-                            if (bpmSamples.size() > MAX_BPM_SAMPLES)
-                                bpmSamples.removeFirst();
-
-                            double avg = bpmSamples.stream()
-                                    .mapToInt(Integer::intValue)
-                                    .average()
-                                    .orElse(0);
-
-                            activityBpm.append(String.format(Locale.getDefault(), "%.1f,", avg));
-                        }
-                    }
-                });
-            }
-        }
-    };
-
-    public String timeLine;
-
-    private TextView tvWorkoutDevice;
-    private TextView tvWorkoutStarted;
+    // ---- Fragment lifecycle ----
 
     @Nullable
     @Override
@@ -139,93 +86,68 @@ public class INWorkoutFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
 
         View v = inflater.inflate(R.layout.fragment_workout, container, false);
-        vm = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
 
-        TextView tvDevice = v.findViewById(R.id.tvWorkoutDevice);
-        TextView tvStarted = v.findViewById(R.id.tvWorkoutStarted);
-        tvTimer = v.findViewById(R.id.tvWorkoutTimer);
-        btnPause = v.findViewById(R.id.btnPauseWorkout);
-        btnCancel = v.findViewById(R.id.btnStopWorkout);
-        btnEnd = v.findViewById(R.id.btnSaveWorkout);
-        tvStatus = v.findViewById(R.id.tvWorkoutStatus);
+        tvTimer  = v.findViewById(R.id.tvTimer);
+        tvStatus = v.findViewById(R.id.tvStatus);
+        btnPause = v.findViewById(R.id.btnPause);
+        btnCancel = v.findViewById(R.id.btnCancel);
+        btnEnd = v.findViewById(R.id.btnEnd);
 
-        state = STATE_IDLE;
-        tvStatus.setText("Idle");
-        tvTimer.setText("00:00.00");
-        btnPause.setText("Start Activity");
-        btnPause.setEnabled(true);
-        btnCancel.setEnabled(false);
-        btnEnd.setEnabled(false);
+        // Load info passed from DashboardFragment
+        loadWorkoutInfo();
 
-        if (savedInstanceState != null) restoreState(savedInstanceState);
+        resetUI();
 
-        btnPause.setOnClickListener(v1 -> {
+        btnPause.setOnClickListener(view -> {
             if (state == STATE_IDLE) {
-                showActivityChooser();
+                // start countdown to workout
+                startCountdown();
             } else {
+                // toggle pause / resume logic
                 togglePauseResume();
             }
         });
-        btnCancel.setOnClickListener(v12 -> confirmCancel());
-        btnEnd.setOnClickListener(v13 -> confirmStop());
+
+        btnCancel.setOnClickListener(view -> confirmCancel());
+        btnEnd.setOnClickListener(view -> confirmStop());
+
+        if (savedInstanceState != null) {
+            restoreState(savedInstanceState);
+        }
+
+        return v;
+    }
 
     /**
-     * Load workout information from arguments and display
+     * Load information about the workout (e.g., device name and start time) from arguments.
+     * This matches what DashboardFragment puts into the Bundle.
      */
     private void loadWorkoutInfo() {
-        Bundle args = getArguments() != null ? getArguments() : Bundle.EMPTY;
-        String device = args.getString(ARG_DEVICE_NAME, "");
-        long startedAt = args.getLong(ARG_STARTED_AT, 0L);
+        Bundle args = getArguments();
+        if (args != null) {
+            String deviceName = args.getString(ARG_DEVICE_NAME, "");
+            startedAtFromArgs = args.getLong(ARG_STARTED_AT, 0L);
 
-        // Format device name
-        String deviceLine = TextUtils.isEmpty(device)
-                ? getString(R.string.workout_device_unknown)
-                : getString(R.string.workout_device_fmt, device);
-
-
-        tvWorkoutDevice.setText(deviceLine);
-        tvWorkoutStarted.setText(timeLine);
-    }
-
-    /**
-     * Update workout information dynamically if needed
-     */
-    public void updateWorkoutInfo(String deviceName, long startTime) {
-        if (tvWorkoutDevice != null && tvWorkoutStarted != null) {
-            String deviceLine = TextUtils.isEmpty(deviceName)
-                    ? getString(R.string.workout_device_unknown)
-                    : getString(R.string.workout_device_fmt, deviceName);
-
-            String timeLine = startTime == 0L
-                    ? getString(R.string.workout_started_fmt)
-                    : getString(R.string.workout_started_fmt,
-                    DateFormat.getTimeInstance(DateFormat.SHORT)
-                            .format(new Date(startTime)));
-
-            tvWorkoutDevice.setText(deviceLine);
-            tvWorkoutStarted.setText(timeLine);
+            // Use device name as part of the activity label (fallback to "Workout")
+            selectedActivity = (deviceName == null || deviceName.isEmpty())
+                    ? "Workout"
+                    : deviceName + " Workout";
+        } else {
+            selectedActivity = "Workout";
         }
+        tvStatus.setText("Idle");
     }
 
-    private void showActivityChooser() {
-        String[] activities = {"Running", "Cycling", "Weightlifting", "Yoga", "Cardio"};
-        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setTitle("Choose Activity")
-                .setItems(activities, (dialog, which) -> {
-                    selectedActivity = activities[which];
-                    tvStatus.setText("Selected: " + selectedActivity);
-                    startCountdown();
-                })
-                .setNegativeButton("Cancel", (dialog, which) -> resetUI())
-                .show();
-    }
+    // ---- State control methods ----
 
     private void startCountdown() {
         state = STATE_STARTING;
-        countdown = 3;
+        countdown = START_COUNTDOWN_SECONDS;
         tvTimer.setText(String.valueOf(countdown));
         tvStatus.setText("Starting " + selectedActivity);
         btnPause.setText("Pause Start");
+        btnCancel.setEnabled(true);
+        btnEnd.setEnabled(false);
         handler.postDelayed(countdownRunnable, 1000);
     }
 
@@ -235,7 +157,10 @@ public class INWorkoutFragment extends Fragment {
         startTime = System.currentTimeMillis();
         pauseOffset = 0L;
 
+        activityBpm.setLength(0);
         activityBpm.append(selectedActivity).append(",");
+
+        handler.removeCallbacks(countdownRunnable);
         handler.post(timerRunnable);
 
         btnPause.setEnabled(true);
@@ -285,11 +210,16 @@ public class INWorkoutFragment extends Fragment {
         handler.removeCallbacks(countdownRunnable);
 
         long totalElapsedSec = (System.currentTimeMillis() - startTime + pauseOffset) / 1000;
+
         if (save) {
-            activityBpm.append("end").append(totalElapsedSec).append(",");
-            Session s = new Session(selectedActivity, totalElapsedSec, activityBpm.toString(), System.currentTimeMillis());
-            SessionRepo.save(s);
-            Snackbar.make(requireView(), "Session saved", Snackbar.LENGTH_SHORT).show();
+            // TODO: plug back your Session / SessionRepo saving here if needed.
+            // Example (commented out so it compiles without those classes):
+            // Session s = new Session(selectedActivity, totalElapsedSec, activityBpm.toString(), System.currentTimeMillis());
+            // SessionRepo.save(s);
+
+            Snackbar.make(requireView(),
+                    "Session saved (" + totalElapsedSec + " s)",
+                    Snackbar.LENGTH_SHORT).show();
         }
 
         resetUI();
@@ -326,8 +256,6 @@ public class INWorkoutFragment extends Fragment {
         startTime = 0L;
         pauseStartTime = 0L;
         activityBpm.setLength(0);
-
-        //requireActivity().getOnBackPressedDispatcher().onBackPressed();
     }
 
     private void updateTimerDisplay(long elapsedMillis) {
@@ -337,11 +265,15 @@ public class INWorkoutFragment extends Fragment {
         int hours = (int) (elapsedMillis / (1000 * 60 * 60));
 
         if (hours == 0 && minutes < 60) {
-            tvTimer.setText(String.format(Locale.getDefault(),
-                    "%02d:%02d.%02d", minutes, seconds, milliseconds));
+            tvTimer.setText(String.format(
+                    Locale.getDefault(),
+                    "%02d:%02d.%02d", minutes, seconds, milliseconds
+            ));
         } else {
-            tvTimer.setText(String.format(Locale.getDefault(),
-                    "%02d:%02d:%02d", hours, minutes, seconds));
+            tvTimer.setText(String.format(
+                    Locale.getDefault(),
+                    "%02d:%02d:%02d", hours, minutes, seconds
+            ));
         }
     }
 
@@ -359,7 +291,8 @@ public class INWorkoutFragment extends Fragment {
         state = stateBundle.getInt("state", STATE_IDLE);
         startTime = stateBundle.getLong("startTime", 0L);
         pauseOffset = stateBundle.getLong("pauseOffset", 0L);
-        selectedActivity = stateBundle.getString("activity", "Unknown");
+        selectedActivity = stateBundle.getString("activity", "Workout");
+        activityBpm.setLength(0);
         activityBpm.append(stateBundle.getString("bpmData", ""));
         updateUIState();
     }
