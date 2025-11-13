@@ -12,33 +12,33 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.google.android.material.snackbar.Snackbar;
 import com.team11.smartgym.R;
-import com.team11.smartgym.model.WorkoutSession; // Added import
+import com.team11.smartgym.model.WorkoutSession;
 
 import java.util.Locale;
 
 public class WorkoutFragment extends Fragment {
 
-    // Args used by DashboardFragment when navigating here
     public static final String ARG_DEVICE_NAME = "arg_device_name";
     public static final String ARG_STARTED_AT  = "arg_started_at";
 
-    // ---- State constants ----
     private static final int STATE_IDLE      = 0;
     private static final int STATE_STARTING  = 1;
     private static final int STATE_RUNNING   = 2;
     private static final int STATE_PAUSED    = 3;
 
-    // ---- UI ----
     private TextView tvTimer;
     private TextView tvStatus;
+    private TextView tvBpm;
+    private TextView tvAvgBpm;
+    private TextView tvMaxBpm;
     private Button btnPause;
     private Button btnCancel;
     private Button btnEnd;
 
-    // ---- Timer & state ----
     private final Handler handler = new Handler(Looper.getMainLooper());
     private int state = STATE_IDLE;
 
@@ -50,10 +50,18 @@ public class WorkoutFragment extends Fragment {
     private static final int START_COUNTDOWN_SECONDS = 5;
 
     private String selectedActivity = "Workout";
-    private long startedAtFromArgs = 0L; // from Dashboard
+    private long startedAtFromArgs = 0L;
     private final StringBuilder activityBpm = new StringBuilder();
 
-    // ---- Runnables ----
+    private DashboardViewModel vm;
+    private final Handler bpmHandler = new Handler(Looper.getMainLooper());
+    private static final int BPM_UPDATE_INTERVAL = 1000;
+
+    // BPM tracking
+    private int maxBpm = 0;
+    private int bpmSum = 0;
+    private int bpmCount = 0;
+
     private final Runnable timerRunnable = new Runnable() {
         @Override
         public void run() {
@@ -78,8 +86,6 @@ public class WorkoutFragment extends Fragment {
         }
     };
 
-    // ---- Fragment lifecycle ----
-
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -90,21 +96,23 @@ public class WorkoutFragment extends Fragment {
 
         tvTimer  = v.findViewById(R.id.tvTimer);
         tvStatus = v.findViewById(R.id.tvStatus);
+        tvBpm    = v.findViewById(R.id.tvBpm);
+        tvAvgBpm = v.findViewById(R.id.tvAvgBpm);
+        tvMaxBpm = v.findViewById(R.id.tvMaxBpm);
         btnPause = v.findViewById(R.id.btnPause);
         btnCancel = v.findViewById(R.id.btnCancel);
         btnEnd = v.findViewById(R.id.btnEnd);
 
-        // Load info passed from DashboardFragment
-        loadWorkoutInfo();
+        vm = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
+        startBpmUpdater();
 
+        loadWorkoutInfo();
         resetUI();
 
         btnPause.setOnClickListener(view -> {
             if (state == STATE_IDLE) {
-                // start countdown to workout
                 startCountdown();
             } else {
-                // toggle pause / resume logic
                 togglePauseResume();
             }
         });
@@ -119,17 +127,11 @@ public class WorkoutFragment extends Fragment {
         return v;
     }
 
-    /**
-     * Load information about the workout (e.g., device name and start time) from arguments.
-     * This matches what DashboardFragment puts into the Bundle.
-     */
     private void loadWorkoutInfo() {
         Bundle args = getArguments();
         if (args != null) {
             String deviceName = args.getString(ARG_DEVICE_NAME, "");
             startedAtFromArgs = args.getLong(ARG_STARTED_AT, 0L);
-
-            // Use device name as part of the activity label (fallback to "Workout")
             selectedActivity = (deviceName == null || deviceName.isEmpty())
                     ? "Workout"
                     : deviceName + " Workout";
@@ -138,8 +140,6 @@ public class WorkoutFragment extends Fragment {
         }
         tvStatus.setText("Idle");
     }
-
-    // ---- State control methods ----
 
     private void startCountdown() {
         state = STATE_STARTING;
@@ -160,6 +160,10 @@ public class WorkoutFragment extends Fragment {
 
         activityBpm.setLength(0);
         activityBpm.append(selectedActivity).append(",");
+
+        maxBpm = 0;
+        bpmSum = 0;
+        bpmCount = 0;
 
         handler.removeCallbacks(countdownRunnable);
         handler.post(timerRunnable);
@@ -214,21 +218,25 @@ public class WorkoutFragment extends Fragment {
         long totalElapsedSec = (endTime - startTime + pauseOffset) / 1000;
 
         if (save) {
-            // Create a WorkoutSession instance to store the workout details
+
+            int avgBpm = bpmCount == 0 ? 0 : bpmSum / bpmCount;
+
             WorkoutSession session = new WorkoutSession(
-                    System.currentTimeMillis(),                              // id
-                    selectedActivity,                                        // deviceName
-                    startedAtFromArgs == 0L ? startTime : startedAtFromArgs, // startedAt
-                    endTime,                                                 // endedAt
-                    0,                                                       // avgHeartRate (placeholder)  //TODO CHANGE THIS TO THE RIGHT THING
-                    0,                                                       // maxHeartRate (placeholder)
-                    (int) totalElapsedSec,                                   // duration in seconds
-                    activityBpm.toString()                                   // saves a string of heartrate "bpm1, bpm2, bpm3, ..."
+                    System.currentTimeMillis(),
+                    selectedActivity,
+                    startedAtFromArgs == 0L ? startTime : startedAtFromArgs,
+                    endTime,
+                    avgBpm,
+                    maxBpm,
+                    (int) totalElapsedSec,
+                    activityBpm.toString()
             );
 
             Snackbar.make(requireView(),
-                    "Session saved (" + session.getFormattedDuration() + ")",
-                    Snackbar.LENGTH_SHORT).show();
+                    "Saved: " + session.getFormattedDuration() +
+                            " | Avg HR: " + avgBpm +
+                            " | Max HR: " + maxBpm,
+                    Snackbar.LENGTH_LONG).show();
         }
 
         resetUI();
@@ -236,8 +244,8 @@ public class WorkoutFragment extends Fragment {
 
     private void confirmStop() {
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setTitle("End Activity")
-                .setMessage("Do you want to save this activity?")
+                .setTitle("End Workout")
+                .setMessage("Do you want to save this workout?")
                 .setPositiveButton("Save", (dialog, which) -> stopTimer(true))
                 .setNegativeButton("Discard", (dialog, which) -> stopTimer(false))
                 .setNeutralButton("Cancel", null)
@@ -246,7 +254,7 @@ public class WorkoutFragment extends Fragment {
 
     private void confirmCancel() {
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setTitle("Cancel Workout")
+                .setTitle("Cancel Activity")
                 .setMessage("Are you sure you want to cancel this workout?")
                 .setPositiveButton("Yes", (dialog, which) -> resetUI())
                 .setNegativeButton("No", null)
@@ -261,10 +269,18 @@ public class WorkoutFragment extends Fragment {
         btnPause.setEnabled(true);
         btnCancel.setEnabled(false);
         btnEnd.setEnabled(false);
+
         pauseOffset = 0L;
         startTime = 0L;
         pauseStartTime = 0L;
         activityBpm.setLength(0);
+
+        maxBpm = 0;
+        bpmSum = 0;
+        bpmCount = 0;
+
+        if (tvAvgBpm != null) tvAvgBpm.setText("Average: --");
+        if (tvMaxBpm != null) tvMaxBpm.setText("Max: --");
     }
 
     private void updateTimerDisplay(long elapsedMillis) {
@@ -286,13 +302,43 @@ public class WorkoutFragment extends Fragment {
         }
     }
 
+    private void startBpmUpdater() {
+        bpmHandler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                Integer bpm = vm.getBpm().getValue();
+
+                if (tvBpm != null && isAdded()) {
+                    tvBpm.setText(bpm == null ? "-- bpm" : getString(R.string.hr_bpm, bpm));
+                }
+
+                if (bpm != null && state == STATE_RUNNING) {
+                    bpmSum += bpm;
+                    bpmCount++;
+                    if (bpm > maxBpm) maxBpm = bpm;
+                }
+
+                if (tvAvgBpm != null) {
+                    int avg = (bpmCount == 0 ? 0 : bpmSum / bpmCount);
+                    tvAvgBpm.setText("Average: " + avg + " bpm");
+                }
+
+                if (tvMaxBpm != null) {
+                    tvMaxBpm.setText("Max: " + maxBpm + " bpm");
+                }
+
+                bpmHandler.postDelayed(this, BPM_UPDATE_INTERVAL);
+            }
+        }, BPM_UPDATE_INTERVAL);
+    }
+
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putInt("state", state);
         outState.putLong("startTime", startTime);
         outState.putLong("pauseOffset", pauseOffset);
-        outState.putString("activity", selectedActivity);
+        outState.putString("Workout", selectedActivity);
         outState.putString("bpmData", activityBpm.toString());
     }
 
@@ -310,14 +356,14 @@ public class WorkoutFragment extends Fragment {
         switch (state) {
             case STATE_RUNNING:
                 tvStatus.setText(selectedActivity + " Ongoing");
-                btnPause.setText("Pause Workout");
+                btnPause.setText("Pause Activity");
                 btnCancel.setEnabled(false);
                 btnEnd.setEnabled(false);
                 handler.post(timerRunnable);
                 break;
             case STATE_PAUSED:
                 tvStatus.setText(selectedActivity + " Paused");
-                btnPause.setText("Resume Workout");
+                btnPause.setText("Resume Activity");
                 btnCancel.setEnabled(true);
                 btnEnd.setEnabled(true);
                 break;
@@ -331,5 +377,6 @@ public class WorkoutFragment extends Fragment {
         super.onDestroyView();
         handler.removeCallbacks(timerRunnable);
         handler.removeCallbacks(countdownRunnable);
+        bpmHandler.removeCallbacksAndMessages(null);
     }
 }

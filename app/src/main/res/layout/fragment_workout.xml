@@ -5,7 +5,6 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <!-- Device name -->
     <TextView
         android:id="@+id/tvWorkoutDevice"
         android:layout_width="wrap_content"
@@ -14,7 +13,6 @@
         android:textSize="18sp"
         android:text="@string/workout_device_unknown" />
 
-    <!-- Started at -->
     <TextView
         android:id="@+id/tvWorkoutStarted"
         android:layout_width="wrap_content"
@@ -22,7 +20,6 @@
         android:layout_marginTop="8dp"
         android:text="@string/workout_started_fmt" />
 
-    <!-- Status text (used by WorkoutFragment as tvStatus) -->
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="wrap_content"
@@ -33,7 +30,6 @@
         android:gravity="center"
         android:layout_gravity="center" />
 
-    <!-- Timer text (used by WorkoutFragment as tvTimer) -->
     <TextView
         android:id="@+id/tvTimer"
         android:layout_width="wrap_content"
@@ -45,7 +41,6 @@
         android:layout_marginTop="16dp"
         android:layout_gravity="center_horizontal" />
 
-    <!-- Pause / Start button (btnPause) -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btnPause"
         android:layout_width="match_parent"
@@ -61,7 +56,6 @@
         android:gravity="center"
         android:layout_marginTop="8dp">
 
-        <!-- End / Save button (btnEnd) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnEnd"
             android:layout_width="0dp"
@@ -70,7 +64,6 @@
             android:text="End Activity"
             android:enabled="false" />
 
-        <!-- Cancel button (btnCancel) -->
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btnCancel"
             android:layout_width="0dp"
@@ -79,6 +72,39 @@
             android:layout_marginStart="8dp"
             android:text="Cancel Workout"
             android:enabled="false" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <TextView
+            android:id="@+id/tvBpm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="-- bpm"
+            android:textSize="48sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvAvgBpm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Avg: -- bpm"
+            android:textSize="20sp"
+            android:layout_marginTop="8dp" />
+
+        <TextView
+            android:id="@+id/tvMaxBpm"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Max: -- bpm"
+            android:textSize="20sp"
+            android:layout_marginTop="4dp" />
+
     </LinearLayout>
 
 </LinearLayout>
