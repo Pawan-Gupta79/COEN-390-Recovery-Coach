@@ -14,6 +14,8 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.team11.smartgym.R;
+import com.team11.smartgym.data.DatabaseProvider;
+import com.team11.smartgym.data.SessionRepository;
 
 public class SessionsFragment extends Fragment {
 
@@ -29,38 +31,28 @@ public class SessionsFragment extends Fragment {
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
 
-        // Use your existing layout for the sessions screen
         View v = inflater.inflate(R.layout.fragment_sessions, container, false);
 
         rvSessions = v.findViewById(R.id.rvSessions);
         tvEmptyState = v.findViewById(R.id.tvEmptyState);
 
-        // ViewModel
-        viewModel = new ViewModelProvider(this).get(SessionsViewModel.class);
-
-        // RecyclerView + adapter
+        // Adapter
         adapter = new SessionsAdapter();
         rvSessions.setLayoutManager(new LinearLayoutManager(requireContext()));
         rvSessions.setAdapter(adapter);
-        rvSessions.addItemDecoration(
-                new DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL)
-        );
+        rvSessions.addItemDecoration(new DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL));
 
-        // Observe sessions list
+        // Repository + ViewModel
+        SessionRepository repo = DatabaseProvider.get(requireContext()).getSessionRepository();
+        viewModel = new ViewModelProvider(this, new SessionsViewModelFactory(repo))
+                .get(SessionsViewModel.class);
+
+        // Observe
         viewModel.getSessions().observe(getViewLifecycleOwner(), sessions -> {
             adapter.submitList(sessions);
-
-            if (sessions == null || sessions.isEmpty()) {
-                rvSessions.setVisibility(View.GONE);
-                tvEmptyState.setVisibility(View.VISIBLE);
-            } else {
-                rvSessions.setVisibility(View.VISIBLE);
-                tvEmptyState.setVisibility(View.GONE);
-            }
+            rvSessions.setVisibility((sessions == null || sessions.isEmpty()) ? View.GONE : View.VISIBLE);
+            tvEmptyState.setVisibility((sessions == null || sessions.isEmpty()) ? View.VISIBLE : View.GONE);
         });
-
-        // Trigger load
-        viewModel.loadSessions();
 
         return v;
     }

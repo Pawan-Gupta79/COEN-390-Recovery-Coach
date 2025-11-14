@@ -16,7 +16,9 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.google.android.material.snackbar.Snackbar;
 import com.team11.smartgym.R;
-import com.team11.smartgym.model.WorkoutSession;
+import com.team11.smartgym.data.DatabaseProvider;
+import com.team11.smartgym.data.Reading;
+import com.team11.smartgym.data.SessionRepository;
 
 import java.util.Locale;
 
@@ -62,6 +64,10 @@ public class WorkoutFragment extends Fragment {
     private int bpmSum = 0;
     private int bpmCount = 0;
 
+    // Use DatabaseProvider to get repository (fixed)
+    private SessionRepository repo;
+    private long liveSessionId = -1;
+
     private final Runnable timerRunnable = new Runnable() {
         @Override
         public void run() {
@@ -104,8 +110,16 @@ public class WorkoutFragment extends Fragment {
         btnEnd = v.findViewById(R.id.btnEnd);
 
         vm = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
-        startBpmUpdater();
 
+        // ===== FIX: obtain SessionRepository from DatabaseProvider =====
+        try {
+            repo = DatabaseProvider.get(requireContext()).getSessionRepository();
+        } catch (Exception e) {
+            repo = null;
+            Snackbar.make(v, "Database unavailable: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+        }
+
+        startBpmUpdater();
         loadWorkoutInfo();
         resetUI();
 
@@ -155,6 +169,7 @@ public class WorkoutFragment extends Fragment {
     private void startMainTimer() {
         state = STATE_RUNNING;
         tvStatus.setText(selectedActivity + " Ongoing");
+
         startTime = System.currentTimeMillis();
         pauseOffset = 0L;
 
@@ -164,6 +179,18 @@ public class WorkoutFragment extends Fragment {
         maxBpm = 0;
         bpmSum = 0;
         bpmCount = 0;
+
+        // Create session in DB; guard repo==null
+        if (repo != null) {
+            try {
+                liveSessionId = repo.createSession(startTime);
+            } catch (Exception e) {
+                liveSessionId = -1;
+                Snackbar.make(requireView(), "Failed to create session: " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+            }
+        } else {
+            liveSessionId = -1;
+        }
 
         handler.removeCallbacks(countdownRunnable);
         handler.post(timerRunnable);
@@ -217,28 +244,32 @@ public class WorkoutFragment extends Fragment {
         long endTime = System.currentTimeMillis();
         long totalElapsedSec = (endTime - startTime + pauseOffset) / 1000;
 
-        if (save) {
-
+        if (save && liveSessionId != -1 && repo != null) {
             int avgBpm = bpmCount == 0 ? 0 : bpmSum / bpmCount;
 
-            WorkoutSession session = new WorkoutSession(
-                    System.currentTimeMillis(),
-                    selectedActivity,
-                    startedAtFromArgs == 0L ? startTime : startedAtFromArgs,
-                    endTime,
-                    avgBpm,
-                    maxBpm,
-                    (int) totalElapsedSec,
-                    activityBpm.toString()
-            );
+            try {
+                repo.finalizeSession(
+                        liveSessionId,
+                        avgBpm,
+                        maxBpm,
+                        endTime
+                );
 
-            Snackbar.make(requireView(),
-                    "Saved: " + session.getFormattedDuration() +
-                            " | Avg HR: " + avgBpm +
-                            " | Max HR: " + maxBpm,
-                    Snackbar.LENGTH_LONG).show();
+                Snackbar.make(requireView(),
+                        "Saved: " + totalElapsedSec + " sec" +
+                                " | Avg HR: " + avgBpm +
+                                " | Max HR: " + maxBpm,
+                        Snackbar.LENGTH_LONG).show();
+            } catch (Exception e) {
+                Snackbar.make(requireView(),
+                        "Failed to finalize session: " + e.getMessage(),
+                        Snackbar.LENGTH_LONG).show();
+            }
+        } else if (save && repo == null) {
+            Snackbar.make(requireView(), "Can't save: database unavailable", Snackbar.LENGTH_LONG).show();
         }
 
+        liveSessionId = -1;
         resetUI();
     }
 
@@ -306,16 +337,35 @@ public class WorkoutFragment extends Fragment {
         bpmHandler.postDelayed(new Runnable() {
             @Override
             public void run() {
-                Integer bpm = vm.getBpm().getValue();
+                Integer bpm = null;
+                try {
+                    bpm = vm.getBpm().getValue(); // keep original approach
+                } catch (Exception e) {
+                    // guard against ViewModel issues
+                }
 
                 if (tvBpm != null && isAdded()) {
                     tvBpm.setText(bpm == null ? "-- bpm" : getString(R.string.hr_bpm, bpm));
                 }
 
-                if (bpm != null && state == STATE_RUNNING) {
+                if (bpm != null && state == STATE_RUNNING && liveSessionId != -1 && repo != null) {
+
                     bpmSum += bpm;
                     bpmCount++;
+
                     if (bpm > maxBpm) maxBpm = bpm;
+
+                    // write reading sample (guarded)
+                    try {
+                        Reading r = new Reading();
+                        r.sessionId = liveSessionId;
+                        r.timestamp = System.currentTimeMillis();
+                        r.bpm = bpm;
+                        repo.insertReading(r);
+                    } catch (Exception e) {
+                        // insert failed: show a single Snackbar, but don't spam
+                        Snackbar.make(requireView(), "Failed to save reading: " + e.getMessage(), Snackbar.LENGTH_SHORT).show();
+                    }
                 }
 
                 if (tvAvgBpm != null) {
