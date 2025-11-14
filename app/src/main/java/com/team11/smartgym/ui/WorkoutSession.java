@@ -24,6 +24,8 @@ public class WorkoutSession {
         this.maxHeartRate = maxHeartRate;
         this.duration = duration;
         this.heartRate = "";
+
+
     }
     public WorkoutSession(long id, String deviceName, long startedAt, long endedAt,
                           int avgHeartRate, int maxHeartRate, int duration, String heartRate) {

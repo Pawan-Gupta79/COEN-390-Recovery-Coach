@@ -18,7 +18,6 @@ import java.util.Locale;
 
 /**
  * Adapter for displaying a list of WorkoutSession items.
- * Works with List<WorkoutSession> coming from SessionsViewModel.
  */
 public class SessionsAdapter extends RecyclerView.Adapter<SessionsAdapter.SessionViewHolder> {
 
@@ -48,10 +47,6 @@ public class SessionsAdapter extends RecyclerView.Adapter<SessionsAdapter.Sessio
         String date = DateFormat.format("MMM dd, yyyy", startedAt).toString();
         String time = DateFormat.format("HH:mm", startedAt).toString();
 
-        long durationMs = Math.max(0, endedAt - startedAt);
-        long min = durationMs / 60000;
-        long sec = (durationMs / 1000) % 60;
-
         h.tvDate.setText(date);
         h.tvTime.setText(time);
 
@@ -60,18 +55,15 @@ public class SessionsAdapter extends RecyclerView.Adapter<SessionsAdapter.Sessio
                 ? "HR Sensor"
                 : deviceName);
 
-        // You already have duration in seconds in the model, but we can show both ways
-        h.tvDuration.setText(String.format(Locale.getDefault(), "%02d:%02d", min, sec));
+        // Duration
+        h.tvDuration.setText(s.getFormattedDuration());
 
-        int avg = s.getAvgHeartRate();
-        int max = s.getMaxHeartRate();
+        // Heart rates
+        h.tvAvgHr.setText(String.format(Locale.getDefault(), "%d bpm", s.getAvgHeartRate()));
+        h.tvMaxHr.setText(String.format(Locale.getDefault(), "%d bpm", s.getMaxHeartRate()));
 
-        h.tvAvgHr.setText(String.valueOf(avg));
-        h.tvMaxHr.setText(String.valueOf(max));
-
-        String summary = String.format(Locale.getDefault(),
-                "Avg %d bpm  •  Max %d bpm", avg, max);
-        h.tvSummary.setText(summary);
+        // Optional: summary field removed or repurposed
+        h.tvSummary.setText(""); // or remove this view in XML
     }
 
     @Override
@@ -81,6 +73,7 @@ public class SessionsAdapter extends RecyclerView.Adapter<SessionsAdapter.Sessio
 
     static final class SessionViewHolder extends RecyclerView.ViewHolder {
         final TextView tvDate, tvTime, tvDevice, tvDuration, tvAvgHr, tvMaxHr, tvSummary;
+
         SessionViewHolder(@NonNull View itemView) {
             super(itemView);
             tvDate     = itemView.findViewById(R.id.tvSessionDate);
