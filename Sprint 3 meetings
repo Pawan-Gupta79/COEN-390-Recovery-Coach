@@ -66,6 +66,11 @@ I cannot test with the real HR sensor, so another team member will need to valid
 
 Time spent: 12 hours total.
 
+Alexandre -
+What I did: Tested the changes to make sure they are error free, researched how to modify overview section and started working on it
+Time spent: 4 hours
+Work till next scrum meeting: fully implement overview feature
+
 Work until next scrum meeting: Begin DS-05 + DS-06:
 DS-05 (Reconnect System):
 05.1 Reconnect state machine (Idle/Reconnecting/Connected/Failed + backoff).
