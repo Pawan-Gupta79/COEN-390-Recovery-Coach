@@ -1,12 +1,12 @@
 package com.team11.smartgym.data;
 
 import android.content.Context;
-
-import androidx.room.Room;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Provides singletons for:
- *  - AppDatabase
+ *  - AppDb (canonical Room database)
  *  - SessionRepository
  *  - SessionController
  *
@@ -17,18 +17,19 @@ public final class DatabaseProvider {
 
     private static DatabaseProvider INSTANCE;
 
-    private final AppDatabase db;
+    private final AppDb db;
     private final SessionRepository sessionRepo;
     private final SessionController sessionController;
+    private final ExecutorService dbExecutor;
 
     private DatabaseProvider(Context appContext) {
-        db = Room.databaseBuilder(appContext, AppDatabase.class, "smartgym.db")
-                .fallbackToDestructiveMigration()
-                .allowMainThreadQueries()   // ✅ quick unblock for Start/Stop flow
-                .build();
+        db = AppDb.get(appContext);
+
+        // single-threaded executor for all DB writes to keep ordering predictable
+        dbExecutor = Executors.newSingleThreadExecutor();
 
         sessionRepo = new SessionRepository(db.sessionDao());
-        sessionController = new SessionController(sessionRepo);
+        sessionController = new SessionController(sessionRepo, dbExecutor);
     }
 
     /** Always pass application context. */
@@ -39,7 +40,8 @@ public final class DatabaseProvider {
         return INSTANCE;
     }
 
-    public AppDatabase getDb() { return db; }
+    public AppDb getDb() { return db; }
     public SessionRepository getSessionRepository() { return sessionRepo; }
     public SessionController getSessionController() { return sessionController; }
+    public ExecutorService getDbExecutor() { return dbExecutor; }
 }

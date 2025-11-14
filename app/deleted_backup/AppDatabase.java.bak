@@ -1,0 +1,5 @@
+// Backup of removed AppDatabase.java
+// Original purpose: duplicate Room database class (deprecated)
+// Kept here as a backup before permanent deletion.
+
+// Original contents were a RoomDatabase with @Database annotation; removed during consolidation to AppDb.

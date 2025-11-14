@@ -21,14 +21,14 @@ import java.util.List;
 @RunWith(AndroidJUnit4.class)
 public class SessionSummaryInstrumentedTest {
 
-    private AppDatabase db;
+    private AppDb db;
     private SessionDao sessionDao;
     private SessionRepository repo;
 
     @Before
     public void createDb() {
         Context ctx = ApplicationProvider.getApplicationContext();
-        db = Room.inMemoryDatabaseBuilder(ctx, AppDatabase.class)
+        db = Room.inMemoryDatabaseBuilder(ctx, AppDb.class)
                 .allowMainThreadQueries()
                 .build();
         sessionDao = db.sessionDao();
