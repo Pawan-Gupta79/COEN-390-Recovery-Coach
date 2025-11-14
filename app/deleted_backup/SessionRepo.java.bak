@@ -1,6 +1,0 @@
-// Backup of removed SessionRepo.java
-// Deprecated compatibility shim; delegate to SessionRepository instead.
-
-package com.team11.smartgym.data;
-
-// (backup)
