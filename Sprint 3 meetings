@@ -25,7 +25,7 @@ pawan - proposes someone making code for fake hr data.
 William proposes doing DS-03
 thaos - working on different logins. 
 alexander - ui changes to make app consistent
-Victor - 
+Victor - work on scan
 
 status of hardware - HW-01, HW-02 working, need to work on connecting to the app. 
 Arnav proposes making a small simple app to connect to so know if it works, then integrate it into the main app. 
@@ -89,5 +89,13 @@ What I did: -corrected the duplicate database and made sure the code still funct
             -removed duplicate menu bar icons
 Time spent: 8 hours
 Work till next scrum meeting: more complex sessions and workout logic.
+
+Victor 
+ScanDeviceAcitivty now scans real devices 
+-filter feature not impelemented and too many device can be discovered
+-also need to prevent connecting multiple device and only accept specific devices
+
+-Disconnect logic and reconnec having issues
+7h
 
  
