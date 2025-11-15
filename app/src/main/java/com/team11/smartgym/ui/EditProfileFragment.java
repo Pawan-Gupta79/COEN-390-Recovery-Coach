@@ -52,6 +52,7 @@ public class EditProfileFragment extends Fragment {
         surname = view.findViewById(R.id.insertSurname);
         username = view.findViewById(R.id.insertUsername);
         height = view.findViewById(R.id.insertHeight);
+        // weight/age fields may be absent in some layouts; handle nulls gracefully
         weight = view.findViewById(R.id.insertWeight);
         age = view.findViewById(R.id.insertAge);
         maleOption = view.findViewById(R.id.maleOption);
@@ -61,6 +62,8 @@ public class EditProfileFragment extends Fragment {
         activeOption = view.findViewById(R.id.activeOption);
 
         saveButton = view.findViewById(R.id.save);
+        // Disable save until current user is loaded
+        saveButton.setEnabled(false);
 
         if (userId != -1) {
             repo.getUserById(userId, user -> {
@@ -72,7 +75,9 @@ public class EditProfileFragment extends Fragment {
                         name.setText(user.name);
                         surname.setText(user.surname);
                         username.setText(user.username);
-                        height.setText(String.valueOf(user.height));
+                        if (height != null) height.setText(String.valueOf(user.height));
+                        if (weight != null) weight.setText(String.valueOf(user.weight));
+                        if (age != null) age.setText(String.valueOf(user.age));
 
                         if ("Male".equals(user.gender)) {
                             maleOption.setChecked(true);
@@ -90,6 +95,9 @@ public class EditProfileFragment extends Fragment {
                             default:
                                 inactiveOption.setChecked(true);
                         }
+
+                        // user loaded, allow saving
+                        if (saveButton != null) saveButton.setEnabled(true);
                     });
                 }
             });
@@ -101,23 +109,41 @@ public class EditProfileFragment extends Fragment {
                 Toast.makeText(requireContext(), "User not found", Toast.LENGTH_SHORT).show();
                 return;
             }
-            try {
-                Integer.parseInt(height.getText().toString());
-            } catch (NumberFormatException e) {
-                Toast.makeText(requireContext(), "Height must be a whole number (in cm)", Toast.LENGTH_SHORT).show();
-                return ;
+            // Validate numeric fields only if the corresponding input views exist and are non-empty.
+            if (height != null) {
+                String h = height.getText().toString().trim();
+                if (!h.isEmpty()) {
+                    try {
+                        Integer.parseInt(h);
+                    } catch (NumberFormatException e) {
+                        Toast.makeText(requireContext(), "Height must be a whole number (in cm)", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                }
             }
-            try {
-                Integer.parseInt(weight.getText().toString());
-            } catch (NumberFormatException e) {
-                Toast.makeText(requireContext(), "Weight must be a  number (in lbs)", Toast.LENGTH_SHORT).show();
-                return ;
+
+            if (weight != null) {
+                String w = weight.getText().toString().trim();
+                if (!w.isEmpty()) {
+                    try {
+                        Integer.parseInt(w);
+                    } catch (NumberFormatException e) {
+                        Toast.makeText(requireContext(), "Weight must be a number (in lbs)", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                }
             }
-            try {
-                Integer.parseInt(weight.getText().toString());
-            } catch (NumberFormatException e) {
-                Toast.makeText(requireContext(), "Age must be a whole number", Toast.LENGTH_SHORT).show();
-                return ;
+
+            if (age != null) {
+                String a = age.getText().toString().trim();
+                if (!a.isEmpty()) {
+                    try {
+                        Integer.parseInt(a);
+                    } catch (NumberFormatException e) {
+                        Toast.makeText(requireContext(), "Age must be a whole number", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                }
             }
             String newEmail = email.getText().toString();
 
@@ -150,13 +176,33 @@ public class EditProfileFragment extends Fragment {
         currentUser.name = name.getText().toString();
         currentUser.surname = surname.getText().toString();
         currentUser.username = username.getText().toString();
-        currentUser.height = Integer.parseInt(height.getText().toString());
+        if (height != null) {
+            String h = height.getText().toString().trim();
+            if (!h.isEmpty()) currentUser.height = Integer.parseInt(h);
+        }
+        if (weight != null) {
+            String w = weight.getText().toString().trim();
+            if (!w.isEmpty()) currentUser.weight = Integer.parseInt(w);
+        }
+        if (age != null) {
+            String a = age.getText().toString().trim();
+            if (!a.isEmpty()) currentUser.age = Integer.parseInt(a);
+        }
         currentUser.gender = (maleOption.isChecked() ? "Male" : "Female");
         currentUser.activityFrequency =
                 (activeOption.isChecked() ? 3 :
                         (moderateActiveOption.isChecked() ? 2 : 1));
 
         repo.updateUser(currentUser);
+        // Update stored session email/username if changed so app reflects edits immediately
+        try {
+            SharedPreferences prefs = requireActivity().getSharedPreferences("user_session", Context.MODE_PRIVATE);
+            prefs.edit()
+                    .putString("user_email", currentUser.email)
+                    .putString("user_username", currentUser.username)
+                    .apply();
+        } catch (Exception ignored) {}
+
         Toast.makeText(requireContext(), "Profile updated successfully", Toast.LENGTH_SHORT).show();
     }
 }
