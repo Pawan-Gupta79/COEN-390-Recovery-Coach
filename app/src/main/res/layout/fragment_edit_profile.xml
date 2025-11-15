@@ -140,6 +140,42 @@
             android:textSize="16sp" />
 
         <TextView
+            android:id="@+id/weight"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="12dp"
+            android:text="Weight"
+            android:textSize="16sp"
+            android:drawablePadding="8dp" />
+
+        <EditText
+            android:id="@+id/insertWeight"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="8dp"
+            android:paddingVertical="12dp"
+            android:hint="Enter New Weight in lbs"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/age"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="12dp"
+            android:text="Age"
+            android:textSize="16sp"
+            android:drawablePadding="8dp" />
+
+        <EditText
+            android:id="@+id/insertAge"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="8dp"
+            android:paddingVertical="12dp"
+            android:hint="Enter Age"
+            android:textSize="16sp" />
+
+        <TextView
             android:id="@+id/gender"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
