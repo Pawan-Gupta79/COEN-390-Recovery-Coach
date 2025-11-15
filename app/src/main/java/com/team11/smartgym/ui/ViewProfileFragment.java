@@ -84,7 +84,7 @@ public class ViewProfileFragment extends Fragment {
                                     try {
                                         if (userHeight != null) {
                                             if (user.height > 0) {
-                                                userHeight.setText(String.format(java.util.Locale.getDefault(), "%d cm", user.height));
+                                                userHeight.setText(String.format(java.util.Locale.getDefault(), "%.0f cm", user.height));
                                             } else {
                                                 userHeight.setText("--");
                                             }
@@ -96,7 +96,7 @@ public class ViewProfileFragment extends Fragment {
                                     try {
                                         if (userWeight != null) {
                                             if (user.weight > 0) {
-                                                userWeight.setText(String.format(java.util.Locale.getDefault(), "%d lbs", user.weight));
+                                                userWeight.setText(String.format(java.util.Locale.getDefault(), "%.0f lbs", user.weight));
                                             } else {
                                                 userWeight.setText("--");
                                             }
