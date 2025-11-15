@@ -71,4 +71,25 @@ public class UserRepo {
             callback.onResult(exists);
         });
     }
+
+    public void insertDefaultUser() {
+        executorService.execute(() -> {
+
+            boolean exists = userDao.countUsersByEmail("admin@example.com") > 0;
+            if (!exists) {
+
+                String defaultPassword = "123456";
+                PasswordHasher.HashedPassword hashed = PasswordHasher.hashPassword(defaultPassword);
+
+                User defaultUser = new User();
+                defaultUser.email = "a@email.com";
+                defaultUser.name = "Admin";
+                defaultUser.passwordHash = hashed.hashBase64;
+                defaultUser.passwordSalt = hashed.saltBase64;
+                defaultUser.passwordIterations = hashed.iterations;
+
+                userDao.insertUser(defaultUser);
+            }
+        });
+    }
 }
