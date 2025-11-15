@@ -1,7 +1,10 @@
 package com.team11.smartgym.ui;
 
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -11,6 +14,11 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
+import com.google.android.material.snackbar.Snackbar;
+import com.team11.smartgym.ble.BleService;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -27,6 +35,7 @@ import com.google.android.material.materialswitch.MaterialSwitch;
 import com.team11.smartgym.R;
 import com.team11.smartgym.data.AppPrefs;
 import com.team11.smartgym.model.ConnectionState;
+import com.team11.smartgym.shared.Bus;
 import com.team11.smartgym.ui.common.SnackbarUtil;
 
 public class DashboardFragment extends Fragment {
@@ -36,11 +45,39 @@ public class DashboardFragment extends Fragment {
     private TextView tvBpm, tvState;
     private MaterialButton btnConnect, btnDisconnect, btnStartWorkout;
     private MaterialSwitch switchFake;
-
+    private int sampleIdx = 0;
     private DashboardViewModel vm;
     private AppPrefs prefs;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private ActivityResultLauncher<Intent> scanLauncher;
+
+    private final BroadcastReceiver bus = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+
+            if (Bus.ACTION_STATE.equals(action)) {
+                String state = intent.getStringExtra(Bus.EXTRA_STATE);
+
+                // ---------------- CHANGED ----------------
+                // Map string state from BLE service to ConnectionState
+                if ("CONNECTED".equals(state)) {
+                    vm.setState(ConnectionState.CONNECTED);
+                } /*else if ("CONNECTING".equals(state)) {
+                    vm.setState(ConnectionState.CONNECTING);
+                } */else if ("DISCONNECTED".equals(state)) {
+                    vm.setState(ConnectionState.DISCONNECTED);
+                }
+
+            } else if (Bus.ACTION_HR_UPDATE.equals(action)) {
+                int bpm = intent.getIntExtra(Bus.EXTRA_BPM, -1);
+                tvBpm.setText(getString(R.string.hr_bpm, bpm));
+                addPoint(bpm);
+
+            } else if (Bus.ACTION_ERROR.equals(action)) {
+                Snackbar.make(requireView(), intent.getStringExtra(Bus.EXTRA_ERROR), Snackbar.LENGTH_LONG).show();
+            }
+        }
+    };
 
     @Nullable @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
@@ -48,19 +85,29 @@ public class DashboardFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_dashboard, container, false);
 
-        chipDevice      = v.findViewById(R.id.chipDevice);
-        chart           = v.findViewById(R.id.chart);
-        tvBpm           = v.findViewById(R.id.tvBpm);
-        tvState         = v.findViewById(R.id.tvState);
-        btnConnect      = v.findViewById(R.id.btnConnect);
-        btnDisconnect   = v.findViewById(R.id.btnDisconnect);
+        chipDevice = v.findViewById(R.id.chipDevice);
+        chart = v.findViewById(R.id.chart);
+        tvBpm = v.findViewById(R.id.tvBpm);
+        tvState = v.findViewById(R.id.tvState);
+        btnConnect = v.findViewById(R.id.btnConnect);
+        btnDisconnect = v.findViewById(R.id.btnDisconnect);
         btnStartWorkout = v.findViewById(R.id.btnStartWorkout);
-        switchFake      = v.findViewById(R.id.switchFake);
+        switchFake = v.findViewById(R.id.switchFake);
 
-        vm    = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
+        LineDataSet set = new LineDataSet(null, "Heart Rate");
+        set.setLineWidth(2f);
+        set.setDrawCircles(false);
+        LineData data = new LineData(set);
+        chart.setData(data);
+        chart.invalidate();
+
+        vm = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
         prefs = new AppPrefs(requireContext());
 
+        //Observer
+        vm.getState().observe(getViewLifecycleOwner(), this::applyState);
         // Restore flags + last device
+
         vm.setAutoReconnectEnabled(prefs.isAutoReconnect());
         String lastName = prefs.getLastDeviceName();
         String lastAddr = prefs.getLastDeviceAddr();
@@ -69,11 +116,7 @@ public class DashboardFragment extends Fragment {
             chipDevice.setText(lastName);
         }
 
-        // Observers
-        vm.getDeviceName().observe(getViewLifecycleOwner(), name ->
-                chipDevice.setText(TextUtils.isEmpty(name)
-                        ? getString(R.string.state_disconnected)
-                        : name));
+
 
         vm.getState().observe(getViewLifecycleOwner(), s -> {
             applyState(s);
@@ -84,52 +127,28 @@ public class DashboardFragment extends Fragment {
                 bpm -> tvBpm.setText(bpm == null ? "-- bpm" : getString(R.string.hr_bpm, bpm)));
 
         // Scan result
-        scanLauncher = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                        Intent data = result.getData();
-                        String name = data.getStringExtra(DeviceScanActivity.EXTRA_DEVICE_NAME);
-                        String addr = data.getStringExtra(DeviceScanActivity.EXTRA_DEVICE_ADDR);
-                        if (!TextUtils.isEmpty(name)) {
-                            vm.setDevice(name, addr);
-                            prefs.setLastDevice(name, addr);
-                            vm.setState(ConnectionState.CONNECTING);
-                            handler.postDelayed(() -> {
-                                vm.setState(ConnectionState.CONNECTED);
-                                SnackbarUtil.show(requireView(), getString(R.string.connected_snackbar));
-                            }, 700);
-                        }
-                    }
-                });
+
 
         // Connect
         btnConnect.setOnClickListener(click -> {
-            boolean auto = vm.isAutoReconnectEnabled();
-            String saved = vm.getDeviceName().getValue();
-            if (auto && !TextUtils.isEmpty(saved)) {
-                vm.setState(ConnectionState.CONNECTING);
-                handler.postDelayed(() -> {
-                    vm.setState(ConnectionState.CONNECTED);
-                    SnackbarUtil.show(requireView(), getString(R.string.connected_snackbar));
-                }, 650);
-            } else {
-                scanLauncher.launch(new Intent(requireContext(), DeviceScanActivity.class));
-            }
+            vm.setState(ConnectionState.CONNECTING);  // Update state immediately
+            startBleFlow();
+
         });
 
         // Disconnect (confirm)
-        btnDisconnect.setOnClickListener(vw -> new MaterialAlertDialogBuilder(requireContext())
-                .setIcon(android.R.drawable.ic_menu_close_clear_cancel)
-                .setTitle(R.string.confirm_disconnect_title)
-                .setMessage(R.string.confirm_disconnect_msg)
-                .setNegativeButton(android.R.string.cancel, null)
-                .setPositiveButton(R.string.disconnect, (d, w) -> {
-                    vm.stopFakeSensor();
-                    vm.setState(ConnectionState.DISCONNECTED);
-                    SnackbarUtil.show(requireView(), getString(R.string.disconnected_snackbar));
-                })
-                .show());
+        btnDisconnect.setOnClickListener(vw -> {
+            requireContext().stopService(new Intent(requireContext(), BleService.class));
+            vm.setState(ConnectionState.DISCONNECTED);
+
+            // RESET CHART
+            resetChart();            // Reset chart safely
+            sampleIdx = 0;
+            tvBpm.setText("-- bpm");
+
+        });
+
+
 
         // Fake sensor toggle — also mark CONNECTED so Start is enabled
         switchFake.setChecked(vm.isFakeSensorEnabled());
@@ -171,32 +190,75 @@ public class DashboardFragment extends Fragment {
     private void applyState(ConnectionState s) {
         switch (s) {
             case DISCONNECTED:
-                chipDevice.setChipIconResource(android.R.drawable.stat_sys_data_bluetooth);
-                chipDevice.setText(getString(R.string.state_disconnected));
-                tvState.setText(getString(R.string.state_disconnected));
                 btnConnect.setEnabled(true);
-                btnDisconnect.setEnabled(false);
+                btnDisconnect.setEnabled(false); // disconnect disabled when not connected
+                tvState.setText("Disconnected");
                 break;
-            case CONNECTING:
-                chipDevice.setChipIconResource(android.R.drawable.stat_sys_upload);
-                tvState.setText(getString(R.string.state_connecting));
-                btnConnect.setEnabled(false);
+
+           /*// case CONNECTING:
+                btnConnect.setEnabled(false);   // prevent duplicate connects
                 btnDisconnect.setEnabled(false);
-                break;
+                tvState.setText("Connecting…");
+                break;*/
+
             case CONNECTED:
-                chipDevice.setChipIconResource(android.R.drawable.presence_online);
-                String dn = vm.getDeviceName().getValue();
-                chipDevice.setText(TextUtils.isEmpty(dn) ? getString(R.string.state_connected) : dn);
-                tvState.setText(getString(R.string.state_connected));
                 btnConnect.setEnabled(false);
-                btnDisconnect.setEnabled(true);
-                break;
-            case RECONNECTING:
-                chipDevice.setChipIconResource(android.R.drawable.stat_notify_sync);
-                tvState.setText(getString(R.string.state_reconnecting));
-                btnConnect.setEnabled(false);
-                btnDisconnect.setEnabled(false);
+                btnDisconnect.setEnabled(true);  // ENABLE disconnect when connected
+                tvState.setText("Connected");
                 break;
         }
     }
+
+    private void startBleFlow() {
+        requireContext().startService(
+                new Intent(requireContext(), BleService.class)
+                        .setAction(BleService.ACTION_START)
+        );
+        startActivity(new Intent(requireContext(), DeviceScanActivity.class));
+    }
+
+    private void resetChart() {
+        LineData data = chart.getData();
+        if (data != null) {
+            LineDataSet ds = (LineDataSet) data.getDataSetByIndex(0);
+            if (ds != null) ds.clear();
+            data.notifyDataChanged();
+            chart.notifyDataSetChanged();
+            chart.invalidate();
+        }
+    }
+
+    private void addPoint(int bpm) {
+        LineData data = chart.getData();
+        if (data == null) return;
+
+        LineDataSet ds = (LineDataSet) data.getDataSetByIndex(0);
+        if (ds == null) return;
+
+        ds.addEntry(new Entry(sampleIdx++, bpm));
+        while (ds.getEntryCount() > 60) ds.removeFirst();
+
+        data.notifyDataChanged();
+        chart.notifyDataSetChanged();
+        chart.moveViewToX(sampleIdx);
+        chart.invalidate();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        IntentFilter f = new IntentFilter();
+        f.addAction(Bus.ACTION_STATE);
+        f.addAction(Bus.ACTION_HR_UPDATE);
+        f.addAction(Bus.ACTION_ERROR);
+        requireContext().registerReceiver(bus, f, Context.RECEIVER_EXPORTED);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        requireContext().unregisterReceiver(bus);
+    }
 }
+
+

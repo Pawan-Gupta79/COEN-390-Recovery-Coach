@@ -15,6 +15,7 @@ import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.team11.smartgym.R;
+import com.team11.smartgym.data.PasswordHasher;
 import com.team11.smartgym.data.SessionManager;
 import com.team11.smartgym.data.User;
 import com.team11.smartgym.data.UserRepo;
@@ -43,7 +44,8 @@ public class LoginActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.activity_login);
-
+        //insert admin account email "a@email.com" pass "123456"
+        userRepo.insertDefaultUser();
         tilEmail = findViewById(R.id.tilEmail);
         tilPassword = findViewById(R.id.tilPassword);
         etEmail = findViewById(R.id.etEmail);
