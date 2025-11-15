@@ -1,16 +1,31 @@
 package com.team11.smartgym.ui;
 
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanFilter;
+import android.bluetooth.le.ScanResult;
+import android.bluetooth.le.ScanSettings;
+import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.activity.EdgeToEdge;
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
@@ -25,6 +40,8 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.snackbar.Snackbar;
 import com.google.android.material.textfield.TextInputEditText;
 import com.team11.smartgym.R;
+import com.team11.smartgym.ble.BleService;
+import com.team11.smartgym.databinding.ActivityDeviceScanBinding;
 import com.team11.smartgym.ui.common.SnackbarUtil;
 
 import java.util.ArrayList;
@@ -43,15 +60,32 @@ public class DeviceScanActivity extends AppCompatActivity {
     private RecyclerView rvDevices;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private final List<DeviceItem> devices = new ArrayList<>();
+    private final List<ScanResult> devices = new ArrayList<>();
     private DevicesAdapter adapter;
 
     private boolean isScanning = false;
     private String currentFilter = "";
 
+    //Config between real and fake scan
+    private static final boolean USE_SIMULATION = true;
+    //BLE objects
+    private ActivityDeviceScanBinding b;
+    private BluetoothLeScanner scanner;
+
+    private static final String TAG = "DeviceScanActivity";
+    private ActivityResultLauncher<Intent> enableBtLauncher;
+    private static final int REQUEST_CODE_PERMISSIONS = 101;
+
+    private final String[] REQUIRED_PERMISSIONS_BLE = {
+            android.Manifest.permission.BLUETOOTH_SCAN,
+            android.Manifest.permission.BLUETOOTH_CONNECT,
+            android.Manifest.permission.ACCESS_FINE_LOCATION
+    };
+
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        EdgeToEdge.enable(this);
         setContentView(R.layout.activity_device_scan);
 
         etFilter = findViewById(R.id.etFilter);
@@ -60,154 +94,68 @@ public class DeviceScanActivity extends AppCompatActivity {
         rvDevices = findViewById(R.id.rvDevices);
 
         // RecyclerView setup
-        adapter = new DevicesAdapter(devices, item -> {
-            if (isScanning) stopScan(false);
-            // Return selection
-            Intent data = new Intent();
-            data.putExtra(EXTRA_DEVICE_NAME, item.name);
-            data.putExtra(EXTRA_DEVICE_ADDR, item.addr);
-            setResult(RESULT_OK, data);
-            finish();
-        });
-        rvDevices.setLayoutManager(new LinearLayoutManager(this));
-        rvDevices.setAdapter(adapter);
-        rvDevices.addItemDecoration(new DividerItemDecoration(this, DividerItemDecoration.VERTICAL));
+
 
         // Filter change
-        etFilter.addTextChangedListener(new TextWatcher() {
-            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                currentFilter = s == null ? "" : s.toString().trim();
-            }
-            @Override public void afterTextChanged(Editable s) {}
-        });
+
 
         // Scan button
-        btnScan.setOnClickListener(v -> {
-            if (isScanning) {
-                showStopScanDialog();
-            } else {
-                startScan();
-            }
-        });
+
+
+        //Set up BLE
+        enableBtLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+
+                    if (result.getResultCode() == RESULT_OK) {
+
+                        initializeBluetooth();
+                    } else {
+
+                        Toast.makeText(this, "Bluetooth must be enabled to scan for devices.", Toast.LENGTH_LONG).show();
+                        finish();
+                    }
+                }
+        );
+
+        EdgeToEdge.enable(this);
+        b = ActivityDeviceScanBinding.inflate(getLayoutInflater());
+        setContentView(b.getRoot());
+
+        if (checkAndRequestPermissions()) {
+            initializeBluetooth();
+        }
+
     }
 
     // Intercept back: if scanning, confirm stop first
-    @Override
-    public void onBackPressed() {
-        if (isScanning) {
-            showStopScanDialog(/* onPositive */() -> {
-                stopScan(true);
-                // After stopping, actually go back
-                DeviceScanActivity.super.onBackPressed();
-            });
-        } else {
-            super.onBackPressed();
-        }
-    }
 
     // -------------------- Scanning (simulated) --------------------
 
-    private void startScan() {
-        isScanning = true;
-        progress.setVisibility(View.VISIBLE);
-        devices.clear();
-        adapter.notifyDataSetChanged();
-        SnackbarUtil.show(this, getString(R.string.scanning));
 
-        // Simulate ~3s scan then populate results
-        handler.postDelayed(this::finishScanWithResults, 1500);
-        handler.postDelayed(this::finishScanWithResults, 3000);
-    }
 
-    private void finishScanWithResults() {
-        if (!isScanning) return;
-
-        // Simulated pool (pretend scan found some)
-        List<DeviceItem> pool = new ArrayList<>();
-        pool.add(new DeviceItem("SmartGym HR-1A", "AA:BB:01"));
-        pool.add(new DeviceItem("SmartGym HR-2B", "AA:BB:02"));
-        pool.add(new DeviceItem("Polar H10",      "AA:BB:10"));
-        pool.add(new DeviceItem("Garmin HRM",     "AA:BB:11"));
-
-        // Apply simple prefix filter on name if provided
-        for (DeviceItem di : pool) {
-            if (currentFilter.isEmpty() || di.name.toLowerCase(Locale.US).startsWith(currentFilter.toLowerCase(Locale.US))) {
-                // Avoid duplicates
-                boolean exists = false;
-                for (DeviceItem e : devices) {
-                    if (e.addr.equals(di.addr)) { exists = true; break; }
-                }
-                if (!exists) devices.add(di);
-            }
-        }
-        adapter.notifyDataSetChanged();
-
-        // On last batch, auto-stop scanning and show count
-        // If we already had at least one round, stop now:
-        if (devices.size() > 0) {
-            stopScan(false);
-            SnackbarUtil.show(this, "Found " + devices.size() + " devices");
-        }
-    }
-
-    private void stopScan(boolean fromUser) {
-        isScanning = false;
-        progress.setVisibility(View.GONE);
-        if (fromUser) {
-            SnackbarUtil.show(this, getString(R.string.stop)); // “Stop” string already exists
-        }
-    }
 
     // -------------------- Stop Scan Dialog --------------------
 
-    private void showStopScanDialog() {
-        showStopScanDialog(null);
-    }
 
-    private void showStopScanDialog(@Nullable Runnable onStopConfirmed) {
-        MaterialAlertDialogBuilder builder = new MaterialAlertDialogBuilder(this)
-                .setIcon(android.R.drawable.ic_media_pause) // “stop” style icon
-                .setTitle(R.string.stop_scan_title)
-                .setMessage(R.string.stop_scan_msg)
-                .setNegativeButton(R.string.keep_scanning, (d, w) -> d.dismiss())
-                .setPositiveButton(R.string.stop, (d, w) -> {
-                    stopScan(true);
-                    if (onStopConfirmed != null) onStopConfirmed.run();
-                });
-
-        AlertDialog dialog = builder.show();
-
-        // Tint the STOP button red for emphasis
-        dialog.setOnShowListener(d -> {
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)
-                    .setTextColor(ContextCompat.getColor(this, android.R.color.holo_red_dark));
-        });
-    }
 
     // -------------------- Adapter / ViewHolder --------------------
 
-    private static class DeviceItem {
-        final String name;
-        final String addr;
-        DeviceItem(String name, String addr) {
-            this.name = name;
-            this.addr = addr;
-        }
-    }
+
 
     private static class DevicesAdapter extends RecyclerView.Adapter<DevicesAdapter.DeviceViewHolder> {
-
+        private final Context context;
         interface OnClick {
-            void onItem(DeviceItem item);
+            void onItem(ScanResult item);
         }
 
-        private final List<DeviceItem> items;
+        private final List<ScanResult> items;
         private final OnClick onClick;
 
-        DevicesAdapter(List<DeviceItem> items, OnClick onClick) {
+        DevicesAdapter(Context context, List<ScanResult> items, OnClick onClick) {
             this.items = items;
             this.onClick = onClick;
+            this.context = context;
         }
 
         @NonNull
@@ -220,11 +168,18 @@ public class DeviceScanActivity extends AppCompatActivity {
 
         @Override
         public void onBindViewHolder(@NonNull DeviceViewHolder holder, int position) {
-            DeviceItem di = items.get(position);
+            ScanResult di = items.get(position);
+            String deviceName;
+            if (context.checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
+                deviceName = di.getDevice().getName() == null ? "(unknown)" : di.getDevice().getName();
+            } else {
+                deviceName = "(Permission Denied)";
+            }
+
             android.widget.TextView t1 = holder.itemView.findViewById(android.R.id.text1);
             android.widget.TextView t2 = holder.itemView.findViewById(android.R.id.text2);
-            t1.setText(di.name);
-            t2.setText(di.addr);
+            t1.setText(deviceName);
+            t2.setText(di.getDevice().getAddress() + " RSSI " + di.getRssi());
             holder.itemView.setOnClickListener(v -> onClick.onItem(di));
         }
 
@@ -239,4 +194,136 @@ public class DeviceScanActivity extends AppCompatActivity {
             }
         }
     }
+
+    private void initializeBluetooth() {
+        BluetoothManager bm = (BluetoothManager) getSystemService(Context.BLUETOOTH_SERVICE);
+        BluetoothAdapter ba = bm.getAdapter();
+
+        if (ba == null) {
+            Toast.makeText(this, "Device does not support Bluetooth.", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+
+        if (!ba.isEnabled()) {
+            Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+            enableBtLauncher.launch(enableBtIntent);
+            return;
+        }
+
+        BluetoothLeScanner bluetoothLeScanner = ba.getBluetoothLeScanner();
+
+        if (bluetoothLeScanner == null) {
+            Log.e(TAG, "BluetoothLeScanner is null. Cannot start scan. (Adapter issue)");
+            Toast.makeText(this, "BLE not available or active.", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
+        scanner = bluetoothLeScanner;
+
+        adapter = new DevicesAdapter(this, devices, item -> {
+            if (checkSelfPermission(android.Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
+                Toast.makeText(this, "Connect permission denied.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+
+            Intent i = new Intent(this, BleService.class)
+                    .setAction(BleService.ACTION_CONNECT)
+                    .putExtra(BleService.EXTRA_DEVICE, ((ScanResult) item).getDevice().getAddress());
+            startService(i);
+            Snackbar.make(b.getRoot(), "Connecting to " + ((ScanResult) item).getDevice().getName(), Snackbar.LENGTH_SHORT).show();
+            finish();
+        });
+        b.rvDevices.setLayoutManager(new LinearLayoutManager(this));
+        b.rvDevices.setAdapter(adapter);
+
+        b.btnScan.setOnClickListener(v -> toggleScan());
+
+        toggleScan();
+
+    }
+
+    private void toggleScan() {
+        if (scanner == null || checkSelfPermission(android.Manifest.permission.BLUETOOTH_SCAN) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, "Cannot scan: Scanner not ready or permission denied.", Toast.LENGTH_SHORT).show();
+            isScanning = false;
+            return;
+        }
+
+        if (isScanning) {
+            scanner.stopScan(cb);
+            b.progress.setVisibility(View.GONE);
+            isScanning = false;
+
+        } else {
+            devices.clear();
+            adapter.notifyDataSetChanged();
+            b.progress.setVisibility(View.VISIBLE);
+            isScanning = true;
+
+            List<ScanFilter> filters = new ArrayList<>();
+            ScanSettings settings = new ScanSettings.Builder()
+                    .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY).build();
+            scanner.startScan(filters, settings, cb);
+
+            handler.postDelayed(() -> {
+                if (isScanning) toggleScan();
+            }, 10000);
+        }
+    }
+
+    private boolean checkAndRequestPermissions() {
+        List<String> permissionsToRequest = new ArrayList<>();
+
+        for (String permission : REQUIRED_PERMISSIONS_BLE) {
+            if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) {
+                permissionsToRequest.add(permission);
+            }
+        }
+
+        if (permissionsToRequest.isEmpty()) {
+            return true;
+        } else {
+            requestPermissions(
+                    permissionsToRequest.toArray(new String[0]),
+                    REQUEST_CODE_PERMISSIONS
+            );
+            return false;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+        if (requestCode == REQUEST_CODE_PERMISSIONS) {
+            boolean allGranted = true;
+            for (int result : grantResults) {
+                if (result != PackageManager.PERMISSION_GRANTED) {
+                    allGranted = false;
+                    break;
+                }
+            }
+
+            if (allGranted) {
+                initializeBluetooth();
+            } else {
+                Toast.makeText(this, "Permissions required for Bluetooth scanning were denied.", Toast.LENGTH_LONG).show();
+                finish();
+            }
+        }
+    }
+
+    private final ScanCallback cb = new ScanCallback() {
+        @Override public void onScanResult(int callbackType, ScanResult device) {
+            for (ScanResult d : devices) {
+                if (d.getDevice().getAddress().equals(device.getDevice().getAddress())) return;
+            }
+            devices.add(device);
+            adapter.notifyItemInserted(devices.size() - 1);
+        }
+    };
+
+
+
 }
