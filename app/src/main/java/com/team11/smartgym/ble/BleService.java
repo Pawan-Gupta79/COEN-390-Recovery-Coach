@@ -17,6 +17,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.IBinder;
 
 import androidx.annotation.Nullable;
@@ -35,6 +37,7 @@ public class BleService extends Service {
 
     public static final String ACTION_START = "START";
     public static final String ACTION_CONNECT = "CONNECT";
+    public static final String ACTION_CANCEL_RECONNECT = "CANCEL_RECONNECT";
     public static final String EXTRA_DEVICE = "DEVICE_ADDR";
 
     private static final String PREF_LAST = "last_mac";
@@ -48,7 +51,23 @@ public class BleService extends Service {
     private BluetoothAdapter adapter;
     private BluetoothGatt gatt;
     private SharedPreferences prefs;
-    private boolean reconnecting = false;
+
+    // DS-05: Reconnect state machine.
+    private enum ReconnectState {
+        IDLE,
+        RECONNECTING,
+        CONNECTED,
+        FAILED
+    }
+
+    private ReconnectState reconnectState = ReconnectState.IDLE;
+    private int reconnectAttempts = 0;
+    private static final int MAX_RECONNECT_ATTEMPTS = 5;
+    private static final long BASE_RECONNECT_DELAY_MS = 2_000L;
+    private static final long MAX_RECONNECT_DELAY_MS = 30_000L;
+
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
+    private Runnable pendingReconnect;
 
     // Simple moving window for smoothing.
     private final Queue<Integer> smooth = new ArrayDeque<>();
@@ -77,6 +96,10 @@ public class BleService extends Service {
             if (last != null && prefs.getBoolean("auto_reconnect", true)) {
                 connect(last);
             }
+        } else if (intent != null && ACTION_CANCEL_RECONNECT.equals(intent.getAction())) {
+            // Allow UI / callers to explicitly cancel any reconnect attempts when
+            // the user navigates away from the BLE-dependent screens.
+            cancelReconnect();
         }
         return START_STICKY;
     }
@@ -86,14 +109,13 @@ public class BleService extends Service {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= 26) {
             NotificationChannel ch = new NotificationChannel(
-                    chId,
-                    "BLE",
-                    NotificationManager.IMPORTANCE_LOW
+                    chId, "BLE",
+                    NotificationManager.IMPORTANCE_MIN
             );
             nm.createNotificationChannel(ch);
         }
         Notification n = new Notification.Builder(this, chId)
-                .setContentTitle("Smart Gym")
+                .setContentTitle("SmartGym BLE")
                 .setContentText("State: " + state)
                 .setSmallIcon(R.mipmap.ic_launcher)
                 .build();
@@ -105,6 +127,16 @@ public class BleService extends Service {
             Bus.sendError(this, "No device selected");
             return;
         }
+
+        // Any explicit connect (either initial or from the reconnect timer)
+        // cancels pending reconnect callbacks so we don't double-connect.
+        cancelPendingReconnectInternal();
+
+        if (gatt != null) {
+            gatt.close();
+            gatt = null;
+        }
+
         BluetoothDevice dev = adapter.getRemoteDevice(mac);
         Bus.sendState(this, "Connecting…");
         smooth.clear();
@@ -112,24 +144,112 @@ public class BleService extends Service {
         gatt = dev.connectGatt(this, false, cb, BluetoothDevice.TRANSPORT_LE);
     }
 
+    // -----------------------------
+    // DS-05: Reconnect state machine
+    // -----------------------------
+
+    /**
+     * Compute exponential backoff delay in milliseconds, clamped to a maximum.
+     */
+    private long computeBackoffDelayMs(int attempt) {
+        if (attempt <= 1) {
+            return BASE_RECONNECT_DELAY_MS;
+        }
+        long delay = (long) (BASE_RECONNECT_DELAY_MS * Math.pow(2, attempt - 1));
+        return Math.min(delay, MAX_RECONNECT_DELAY_MS);
+    }
+
+    /**
+     * Schedule a reconnect attempt using the last known device address.
+     * This method moves the internal state machine into RECONNECTING.
+     */
+    private void scheduleReconnect() {
+        String last = prefs.getString(PREF_LAST, null);
+        if (last == null) {
+            // No known device to reconnect to.
+            reconnectState = ReconnectState.FAILED;
+            Bus.sendState(this, "ReconnectFailedNoDevice");
+            return;
+        }
+
+        if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+            // We've already tried too many times in this session.
+            reconnectState = ReconnectState.FAILED;
+            Bus.sendState(this, "ReconnectFailed");
+            return;
+        }
+
+        reconnectState = ReconnectState.RECONNECTING;
+        reconnectAttempts++;
+
+        long delay = computeBackoffDelayMs(reconnectAttempts);
+
+        // Notify UI that we're going to try again after a delay.
+        Bus.sendState(this, "Reconnecting… (" + reconnectAttempts + ")");
+
+        cancelPendingReconnectInternal();
+
+        pendingReconnect = () -> {
+            // If the user navigated away / canceled, don't reconnect.
+            if (reconnectState != ReconnectState.RECONNECTING) {
+                return;
+            }
+            connect(last);
+        };
+
+        mainHandler.postDelayed(pendingReconnect, delay);
+    }
+
+    /**
+     * Internal helper to clear the pending reconnect Runnable, if any.
+     */
+    private void cancelPendingReconnectInternal() {
+        if (pendingReconnect != null) {
+            mainHandler.removeCallbacks(pendingReconnect);
+            pendingReconnect = null;
+        }
+    }
+
+    /**
+     * Public-facing cancel entry point for UI / callers.
+     * Resets the reconnect state machine back to IDLE.
+     */
+    private void cancelReconnect() {
+        reconnectState = ReconnectState.IDLE;
+        reconnectAttempts = 0;
+        cancelPendingReconnectInternal();
+    }
+
     private final BluetoothGattCallback cb = new BluetoothGattCallback() {
         @Override
         public void onConnectionStateChange(BluetoothGatt g, int status, int newState) {
             if (newState == BluetoothProfile.STATE_CONNECTED) {
-                reconnecting = false;
+                // Successful connection: reset the reconnect state machine.
+                cancelPendingReconnectInternal();
+                reconnectState = ReconnectState.CONNECTED;
+                reconnectAttempts = 0;
+
                 Bus.sendState(BleService.this, "Discovering…");
                 g.discoverServices();
+
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 Bus.sendState(BleService.this, "Disconnected");
                 lastContactDetected = false;
-                if (prefs.getBoolean("auto_reconnect", true) && !reconnecting) {
-                    reconnecting = true;
+
+                // Always close the current GATT on disconnect.
+                if (gatt != null) {
+                    gatt.close();
+                    gatt = null;
+                } else {
                     g.close();
-                    String last = prefs.getString(PREF_LAST, null);
-                    getMainLooper().getQueue().addIdleHandler(() -> {
-                        connect(last);
-                        return false;
-                    });
+                }
+
+                // If auto-reconnect is enabled, drive the reconnect state machine.
+                if (prefs.getBoolean("auto_reconnect", true)) {
+                    scheduleReconnect();
+                } else {
+                    reconnectState = ReconnectState.IDLE;
+                    reconnectAttempts = 0;
                 }
             }
         }
@@ -148,13 +268,13 @@ public class BleService extends Service {
             }
 
             g.setCharacteristicNotification(ch, true);
-            BluetoothGattDescriptor cccd = ch.getDescriptor(
-                    UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
-            );
-            if (cccd != null) {
-                cccd.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                g.writeDescriptor(cccd);
+            BluetoothGattDescriptor ccc = ch.getDescriptor(
+                    UUID.fromString("00002902-0000-1000-8000-00805F9B34FB"));
+            if (ccc != null) {
+                ccc.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+                g.writeDescriptor(ccc);
             }
+
             Bus.sendState(BleService.this, "Connected");
         }
 
@@ -175,32 +295,17 @@ public class BleService extends Service {
     };
 
     /**
-     * Parse a Bluetooth SIG Heart Rate Measurement value.
-     *
-     * Format (Bluetooth SIG spec):
-     *  - Byte 0: Flags
-     *      bit 0: 0 = uint8 HR, 1 = uint16 HR
-     *      bit 1: Sensor contact supported
-     *      bit 2: Sensor contact detected (if bit 1 is set)
-     *      bit 3: Energy expended present (2 bytes)
-     *      bit 4: RR-interval present (2*n bytes)
-     *
-     *  - Next: Heart Rate Measurement Value (8 or 16 bit)
-     *  - Optional fields follow (not fully parsed here, but length is validated).
-     *
-     *  Returns:
-     *      - BPM >= 1 if valid
-     *      - -1 if malformed or unusable
+     * Parse Heart Rate Measurement characteristic according to Bluetooth SIG spec.
+     * Returns -1 for malformed or unsupported frames.
      */
     private int parseHr(byte[] v) {
-        if (v == null || v.length < 2) {
-            return -1; // Malformed: need at least flags + 1 byte HR.
+        if (v == null || v.length == 0) {
+            return -1;
         }
 
         int offset = 0;
-
-        // Flags byte
         int flags = v[offset++] & 0xFF;
+
         boolean is16Bit = (flags & 0x01) != 0;
         boolean contactSupported = (flags & 0x02) != 0;
         boolean contactDetected = (flags & 0x04) != 0;
@@ -215,52 +320,70 @@ public class BleService extends Service {
         // Heart Rate value (8-bit or 16-bit)
         if (is16Bit) {
             if (v.length < offset + 2) {
-                return -1; // Malformed frame: says 16-bit but not enough bytes.
+                return -1; // Malformed frame: says 16-bit
             }
-            // Little-endian 16-bit
             bpm = ((v[offset] & 0xFF) | ((v[offset + 1] & 0xFF) << 8));
             offset += 2;
         } else {
             if (v.length < offset + 1) {
-                return -1; // Malformed frame: says 8-bit but no data.
+                return -1; // Malformed frame: says 8-bit
             }
             bpm = v[offset] & 0xFF;
             offset += 1;
         }
 
-        // Optionally skip energy expended (2 bytes) if present.
+        // Optional Energy Expended field
         if (energyPresent) {
             if (v.length < offset + 2) {
-                return -1; // Malformed: flags claim energy but not enough bytes.
+                return -1;
             }
+            // We read but ignore the value for now.
+            int energy = ((v[offset] & 0xFF) | ((v[offset + 1] & 0xFF) << 8));
             offset += 2;
         }
 
-        // Optionally validate RR-interval bytes count (2 bytes per interval).
+        // Optional RR-Interval field(s)
         if (rrPresent) {
+            // Each RR interval is a 16-bit value in 1/1024 second units.
+            // We don't need the actual value for now, but we validate the length.
             int remaining = v.length - offset;
-            if (remaining < 2 || (remaining % 2) != 0) {
-                // RR present but length not multiple of 2 => malformed.
-                return -1;
+            if ((remaining % 2) != 0) {
+                return -1; // Malformed RR intervals
             }
-            // We don't actually need RR intervals for now, so we just accept them.
-        }
 
-        // Basic sanity check: BPM must be positive to be considered valid.
-        if (bpm <= 0) {
-            return -1;
+            // Example of parsing first RR interval if ever needed:
+            if (remaining >= 2) {
+                int rr = ((v[offset] & 0xFF) | ((v[offset + 1] & 0xFF) << 8));
+                // rrMs = (rr / 1024.0f) * 1000.0f;
+            }
         }
 
         return bpm;
     }
 
-    private int smooth(int value) {
-        if (value <= 0) return value;
-        if (smooth.size() == 5) smooth.poll();
-        smooth.offer(value);
+    /**
+     * Simple moving-average smoother for heart rate samples.
+     */
+    private int smooth(int rawBpm) {
+        // Maintain a small window of the last N samples.
+        final int WINDOW = 5;
+        smooth.add(rawBpm);
+        while (smooth.size() > WINDOW) {
+            smooth.poll();
+        }
+
         int sum = 0;
-        for (int x : smooth) sum += x;
+        for (int v : smooth) {
+            sum += v;
+        }
         return sum / smooth.size();
+    }
+
+    /**
+     * Expose last known sensor-contact status (for future use).
+     */
+    public boolean isLastContactDetected() {
+        return lastContactDetected;
     }
 
     @Nullable
@@ -272,6 +395,8 @@ public class BleService extends Service {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        // Tear down any pending reconnect callbacks when the service is destroyed.
+        cancelReconnect();
         if (gatt != null) {
             gatt.close();
             gatt = null;
