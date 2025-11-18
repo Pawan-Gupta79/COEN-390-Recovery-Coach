@@ -94,7 +94,7 @@ public class DashboardFragment extends Fragment {
     private static final UUID HR_SERVICE_UUID =
             UUID.fromString("12345678-1234-5678-1234-56789abcdef0");  // Custom Heart Rate–like service
     private static final UUID STANDARD_HR_SERVICE_UUID =
-            UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb"); // official BLE Heart Rate
+            UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb"); // Standard BLE Heart Rate Service
     private static final UUID HR_CHAR_UUID =
             UUID.fromString("12345678-1234-5678-1234-56789abcdef1");  // Characteristic that holds BPM data
     private static final UUID CCCD_UUID =
@@ -102,6 +102,38 @@ public class DashboardFragment extends Fragment {
 
     // Request code for runtime permission dialog
     private static final int REQ_PERMISSIONS = 42;
+
+
+    //Bus BroadcastReceiver
+    private final BroadcastReceiver bus = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+
+            if (Bus.ACTION_STATE.equals(action)) {
+                String state = intent.getStringExtra(Bus.EXTRA_STATE);
+
+
+                // Map string state from BLE service to ConnectionState
+                if ("CONNECTED".equals(state)) {
+                    vm.setState(ConnectionState.CONNECTED);
+                } /*else if ("CONNECTING".equals(state)) {
+                    vm.setState(ConnectionState.CONNECTING);
+                } */else if ("DISCONNECTED".equals(state)) {
+                    vm.setState(ConnectionState.DISCONNECTED);
+                }
+
+            } else if (Bus.ACTION_HR_UPDATE.equals(action)) {
+                int bpm = intent.getIntExtra(Bus.EXTRA_BPM, -1);
+                tvBpm.setText(getString(R.string.hr_bpm, bpm));
+                addPoint(bpm);
+
+            } else if (Bus.ACTION_ERROR.equals(action)) {
+                Snackbar.make(requireView(), intent.getStringExtra(Bus.EXTRA_ERROR), Snackbar.LENGTH_LONG).show();
+            }
+        }
+    };
+
+
 
 
     @Nullable
@@ -119,6 +151,40 @@ public class DashboardFragment extends Fragment {
         btnDisconnect = v.findViewById(R.id.btnDisconnect);
         btnStartWorkout = v.findViewById(R.id.btnStartWorkout);
         switchFake = v.findViewById(R.id.switchFake);
+
+        //Chart
+        //Chart
+        LineDataSet set = new LineDataSet(null, "Heart Rate");
+        set.setLineWidth(2f);
+        set.setDrawCircles(false);
+        LineData data = new LineData(set);
+        chart.setData(data);
+        chart.invalidate();
+
+        vm = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
+        prefs = new AppPrefs(requireContext());
+
+        //Observer
+        //Observer
+        vm.getState().observe(getViewLifecycleOwner(), this::applyState);
+        // Restore flags + last device
+
+        vm.setAutoReconnectEnabled(prefs.isAutoReconnect());
+        String lastName = prefs.getLastDeviceName();
+        String lastAddr = prefs.getLastDeviceAddr();
+        if (!TextUtils.isEmpty(lastName)) {
+            vm.setDevice(lastName, lastAddr);
+            chipDevice.setText(lastName);
+        }
+
+        vm.getState().observe(getViewLifecycleOwner(), s -> {
+            applyState(s);
+            btnStartWorkout.setEnabled(s == ConnectionState.CONNECTED);
+        });
+
+        vm.getBpm().observe(getViewLifecycleOwner(),
+                bpm -> tvBpm.setText(bpm == null ? "-- bpm" : getString(R.string.hr_bpm, bpm)));
+
 
         // Get system Bluetooth adapter
         BluetoothManager manager =
@@ -162,6 +228,41 @@ public class DashboardFragment extends Fragment {
                 Toast.makeText(requireContext(), "No device connected", Toast.LENGTH_SHORT).show();
             }
         });
+
+        // Fake sensor toggle — also mark CONNECTED so Start is enabled
+        switchFake.setChecked(vm.isFakeSensorEnabled());
+        switchFake.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            vm.setFakeSensorEnabled(isChecked);
+            if (isChecked) {
+                if (vm.getState().getValue() != ConnectionState.CONNECTED) {
+                    vm.setState(ConnectionState.CONNECTED);
+                }
+                SnackbarUtil.show(requireView(), getString(R.string.fake_on));
+            } else {
+                // When turning off, keep current connection state; BPM will clear to "--"
+                SnackbarUtil.show(requireView(), getString(R.string.fake_off));
+            }
+        });
+
+        // Start Workout (guard)
+        btnStartWorkout.setOnClickListener(vw -> {
+            ConnectionState s = vm.getState().getValue();
+            if (s != ConnectionState.CONNECTED) {
+                SnackbarUtil.show(requireView(), getString(R.string.need_connection_snackbar));
+                return;
+            }
+            String device = vm.getDeviceName().getValue();
+            long startedAt = System.currentTimeMillis();
+
+            Bundle args = new Bundle();
+            args.putString(WorkoutFragment.ARG_DEVICE_NAME, device == null ? "" : device);
+            args.putLong(WorkoutFragment.ARG_STARTED_AT, startedAt);
+
+            NavHostFragment.findNavController(this)
+                    .navigate(R.id.action_dashboard_to_workout, args);
+        });
+
+        if (vm.getState().getValue() == null) vm.setState(ConnectionState.DISCONNECTED);
         return v;
     }
 
@@ -535,9 +636,70 @@ public class DashboardFragment extends Fragment {
                 bluetoothGatt = null;
             }
 
-
         }
+    //FAKE SENSOR METHODS
 
+    private void applyState(ConnectionState s) {
+        switch (s) {
+            case DISCONNECTED:
+                btnConnect.setEnabled(true);
+                btnDisconnect.setEnabled(false); // disconnect disabled when not connected
+                tvState.setText("Disconnected");
+                break;
 
+           /*// case CONNECTING:
+                btnConnect.setEnabled(false);   // prevent duplicate connects
+                btnDisconnect.setEnabled(false);
+                tvState.setText("Connecting…");
+                break;*/
 
+            case CONNECTED:
+                btnConnect.setEnabled(false);
+                btnDisconnect.setEnabled(true);  // ENABLE disconnect when connected
+                tvState.setText("Connected");
+                break;
+        }
+    }
+
+    private void resetChart() {
+        LineData data = chart.getData();
+        if (data != null) {
+            LineDataSet ds = (LineDataSet) data.getDataSetByIndex(0);
+            if (ds != null) ds.clear();
+            data.notifyDataChanged();
+            chart.notifyDataSetChanged();
+            chart.invalidate();
+        }
+    }
+
+    private void addPoint(int bpm) {
+        LineData data = chart.getData();
+        if (data == null) return;
+
+        LineDataSet ds = (LineDataSet) data.getDataSetByIndex(0);
+        if (ds == null) return;
+
+        ds.addEntry(new Entry(sampleIdx++, bpm));
+        while (ds.getEntryCount() > 60) ds.removeFirst();
+
+        data.notifyDataChanged();
+        chart.notifyDataSetChanged();
+        chart.moveViewToX(sampleIdx);
+        chart.invalidate();
+    }
+    @Override
+    public void onResume() {
+        super.onResume();
+        IntentFilter f = new IntentFilter();
+        f.addAction(Bus.ACTION_STATE);
+        f.addAction(Bus.ACTION_HR_UPDATE);
+        f.addAction(Bus.ACTION_ERROR);
+        requireContext().registerReceiver(bus, f, Context.RECEIVER_EXPORTED);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        requireContext().unregisterReceiver(bus);
+    }
 }
