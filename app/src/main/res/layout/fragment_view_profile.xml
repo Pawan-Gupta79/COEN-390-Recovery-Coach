@@ -68,7 +68,7 @@
             android:textSize="16sp" />
 
         <TextView
-            android:id="@+id/Height"
+            android:id="@+id/heightLabel"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:paddingVertical="12dp"
@@ -77,7 +77,41 @@
             android:drawablePadding="8dp" />
 
         <TextView
-            android:id="@+id/usertHeight"
+            android:id="@+id/userHeight"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="8dp"
+            android:paddingVertical="12dp"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/weightLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="12dp"
+            android:text="Weight:"
+            android:textSize="16sp"
+            android:drawablePadding="8dp" />
+
+        <TextView
+            android:id="@+id/userWeight"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:drawablePadding="8dp"
+            android:paddingVertical="12dp"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/ageLabel"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingVertical="12dp"
+            android:text="Age:"
+            android:textSize="16sp"
+            android:drawablePadding="8dp" />
+
+        <TextView
+            android:id="@+id/userAge"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:drawablePadding="8dp"

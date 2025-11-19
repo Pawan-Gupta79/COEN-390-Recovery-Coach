@@ -19,13 +19,13 @@ import java.util.List;
 @RunWith(AndroidJUnit4.class)
 public class SessionDaoInstrumentedTest {
 
-    private AppDatabase db;
+    private AppDb db;
     private SessionDao sessionDao;
 
     @Before
     public void createDb() {
         Context context = ApplicationProvider.getApplicationContext();
-        db = Room.inMemoryDatabaseBuilder(context, AppDatabase.class)
+        db = Room.inMemoryDatabaseBuilder(context, AppDb.class)
                 .allowMainThreadQueries() // fine for tests
                 .build();
         sessionDao = db.sessionDao();

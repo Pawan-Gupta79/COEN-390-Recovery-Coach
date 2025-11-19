@@ -5,7 +5,6 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.Transformations;
 import androidx.lifecycle.ViewModel;
 
-import com.team11.smartgym.data.Reading;
 import com.team11.smartgym.data.Session;
 import com.team11.smartgym.data.SessionRepository;
 import com.team11.smartgym.model.WorkoutSession;
@@ -34,14 +33,10 @@ public class SessionsViewModel extends ViewModel {
             List<WorkoutSession> list = new ArrayList<>();
             if (sessions != null) {
                 for (Session s : sessions) {
-                    List<Reading> readings = repo.getReadings(s.id);
-                    int avg = readings.isEmpty() ? s.avgBpm : (int) readings.stream().mapToInt(r -> r.bpm).average().orElse(0);
-                    int max = readings.isEmpty() ? s.maxBpm : readings.stream().mapToInt(r -> r.bpm).max().orElse(0);
+                    // Avoid synchronous DB reads on the main thread. Use stored summary fields.
+                    int avg = s.avgBpm;
+                    int max = s.maxBpm;
                     int duration = (int) ((s.endedAt - s.startedAt) / 1000);
-
-                    StringBuilder hrString = new StringBuilder();
-                    for (Reading r : readings) hrString.append(r.bpm).append(",");
-                    if (hrString.length() > 0) hrString.setLength(hrString.length() - 1);
 
                     list.add(new WorkoutSession(
                             s.id,
@@ -51,7 +46,7 @@ public class SessionsViewModel extends ViewModel {
                             avg,
                             max,
                             duration,
-                            hrString.toString()
+                            "" // detailed HR string omitted to avoid extra DB access
                     ));
                 }
             }

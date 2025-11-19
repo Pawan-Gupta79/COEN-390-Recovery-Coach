@@ -100,11 +100,11 @@ public class CreateAccountFragment extends Fragment {
         try {
             Integer.parseInt(weight.getText().toString());
         } catch (NumberFormatException e) {
-            Toast.makeText(requireContext(), "Weight must be a  number (in lbs)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Weight must be a number (in lbs)", Toast.LENGTH_SHORT).show();
             return false;
         }
         try {
-            Integer.parseInt(weight.getText().toString());
+            Integer.parseInt(age.getText().toString());
         } catch (NumberFormatException e) {
             Toast.makeText(requireContext(), "Age must be a whole number", Toast.LENGTH_SHORT).show();
             return false;

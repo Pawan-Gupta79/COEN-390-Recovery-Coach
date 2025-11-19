@@ -50,14 +50,23 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.github.mikephil.charting.charts.LineChart;
+import com.github.mikephil.charting.components.Description;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.data.Entry;
+import com.github.mikephil.charting.data.LineData;
+import com.github.mikephil.charting.data.LineDataSet;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
+import com.google.android.material.snackbar.Snackbar;
 import com.team11.smartgym.R;
+import com.team11.smartgym.ble.BleService;
+import com.team11.smartgym.data.AppDb;
 import com.team11.smartgym.ble.DeviceItem;
 import com.team11.smartgym.ble.DeviceListAdapter;
 import com.team11.smartgym.data.AppPrefs;
+import com.team11.smartgym.data.SessionRepository;
 import com.team11.smartgym.model.ConnectionState;
 import com.team11.smartgym.shared.Bus;
 import com.team11.smartgym.ui.common.SnackbarUtil;
@@ -106,20 +115,43 @@ public class DashboardFragment extends Fragment {
 
     //Bus BroadcastReceiver
     private final BroadcastReceiver bus = new BroadcastReceiver() {
-        @Override public void onReceive(Context context, Intent intent) {
+        @Override
+        public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
 
             if (Bus.ACTION_STATE.equals(action)) {
                 String state = intent.getStringExtra(Bus.EXTRA_STATE);
+                if (TextUtils.isEmpty(state)) {
+                    return;
+                }
 
 
                 // Map string state from BLE service to ConnectionState
                 if ("CONNECTED".equals(state)) {
                     vm.setState(ConnectionState.CONNECTED);
-                } /*else if ("CONNECTING".equals(state)) {
-                    vm.setState(ConnectionState.CONNECTING);
-                } */else if ("DISCONNECTED".equals(state)) {
+                    tvState.setText("Connected");
+
+                } else if ("Disconnected".equals(state)) {
                     vm.setState(ConnectionState.DISCONNECTED);
+                    tvState.setText("Disconnected");
+
+                } else if (state.startsWith("Connecting") || state.startsWith("Discovering")) {
+                    vm.setState(ConnectionState.CONNECTING);
+                    tvState.setText("Connecting…");
+
+                } else if (state.startsWith("Reconnecting")) {
+                    vm.setState(ConnectionState.RECONNECTING);
+                    // Example: "Reconnecting… (2)"
+                    tvState.setText(state);
+
+                } else if ("ReconnectFailed".equals(state) || "ReconnectFailedNoDevice".equals(state)) {
+                    vm.setState(ConnectionState.DISCONNECTED);
+                    tvState.setText("Reconnect failed");
+                    // Non-blocking retry prompt
+                    SnackbarUtil.show(
+                            requireView(),
+                            "Reconnect failed. Tap Connect to retry."
+                    );
                 }
 
             } else if (Bus.ACTION_HR_UPDATE.equals(action)) {
@@ -133,8 +165,9 @@ public class DashboardFragment extends Fragment {
         }
     };
 
-
-
+    public DashboardFragment() {
+        // Required empty public constructor
+    }
 
     @Nullable
     @Override
@@ -152,8 +185,6 @@ public class DashboardFragment extends Fragment {
         btnStartWorkout = v.findViewById(R.id.btnStartWorkout);
         switchFake = v.findViewById(R.id.switchFake);
 
-
-        //Chart
         LineDataSet set = new LineDataSet(null, "Heart Rate");
         set.setLineWidth(2f);
         set.setDrawCircles(false);
@@ -163,6 +194,8 @@ public class DashboardFragment extends Fragment {
 
         vm = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
         prefs = new AppPrefs(requireContext());
+
+        setupChart();
 
         // Restore flags + last device
         vm.setAutoReconnectEnabled(prefs.isAutoReconnect());
@@ -195,10 +228,12 @@ public class DashboardFragment extends Fragment {
                     }
                 });
         vm.getState().observe(getViewLifecycleOwner(), s -> {
+            if (s == null) return;
             applyState(s);
             btnStartWorkout.setEnabled(s == ConnectionState.CONNECTED);
         });
 
+        // BPM
         vm.getBpm().observe(getViewLifecycleOwner(),
                 bpm -> tvBpm.setText(bpm == null ? "-- bpm" : getString(R.string.hr_bpm, bpm)));
 
@@ -345,19 +380,29 @@ public class DashboardFragment extends Fragment {
             }
         });
 
-        // Start Workout (guard)
+        // Start Workout
         btnStartWorkout.setOnClickListener(vw -> {
             ConnectionState s = vm.getState().getValue();
             if (s != ConnectionState.CONNECTED) {
-                SnackbarUtil.show(requireView(), getString(R.string.need_connection_snackbar));
+                SnackbarUtil.show(requireView(),
+                        getString(R.string.need_connection_snackbar));
                 return;
             }
+
             String device = vm.getDeviceName().getValue();
             long startedAt = System.currentTimeMillis();
 
+            // DS-06.1: create Session row on Start and get its ID.
+            SessionRepository sessionRepo =
+                    new SessionRepository(AppDb.get(requireContext()).sessionDao());
+            long sessionId = sessionRepo.createSession(startedAt);
+
             Bundle args = new Bundle();
-            args.putString(WorkoutFragment.ARG_DEVICE_NAME, device == null ? "" : device);
+            args.putString(WorkoutFragment.ARG_DEVICE_NAME,
+                    device == null ? "" : device);
             args.putLong(WorkoutFragment.ARG_STARTED_AT, startedAt);
+            // Pass sessionId forward so WorkoutFragment can attach samples later (DS-06.2+).
+            args.putLong("sessionId", sessionId);
 
             NavHostFragment.findNavController(this)
                     .navigate(R.id.action_dashboard_to_workout, args);
@@ -762,6 +807,36 @@ public class DashboardFragment extends Fragment {
         }
     }
 
+    private void setupChart() {
+        LineDataSet set = new LineDataSet(null, "Heart Rate");
+        set.setLineWidth(2f);
+        set.setDrawCircles(false);
+        set.setDrawValues(false);
+
+        LineData data = new LineData(set);
+        chart.setData(data);
+
+        Description desc = new Description();
+        desc.setText("");
+        chart.setDescription(desc);
+
+        XAxis xAxis = chart.getXAxis();
+        xAxis.setDrawGridLines(false);
+        xAxis.setDrawAxisLine(false);
+        chart.getAxisLeft().setDrawAxisLine(false);
+        chart.getAxisRight().setEnabled(false);
+        chart.getLegend().setEnabled(false);
+    }
+
+    private void startBleFlow() {
+        // Start BLE service + go to scan screen
+        requireContext().startService(
+                new Intent(requireContext(), BleService.class)
+                        .setAction(BleService.ACTION_START)
+        );
+        startActivity(new Intent(requireContext(), DeviceScanActivity.class));
+    }
+
     private void resetChart() {
         LineData data = chart.getData();
         if (data != null) {
@@ -778,19 +853,30 @@ public class DashboardFragment extends Fragment {
         if (data == null) return;
 
         LineDataSet ds = (LineDataSet) data.getDataSetByIndex(0);
-        if (ds == null) return;
+        if (ds == null) {
+            ds = new LineDataSet(null, "Heart Rate");
+            data.addDataSet(ds);
+        }
 
-        ds.addEntry(new Entry(sampleIdx++, bpm));
-        while (ds.getEntryCount() > 60) ds.removeFirst();
-
+        data.addEntry(new Entry(sampleIdx++, bpm), 0);
         data.notifyDataChanged();
         chart.notifyDataSetChanged();
         chart.moveViewToX(sampleIdx);
         chart.invalidate();
     }
+
+
     @Override
     public void onResume() {
         super.onResume();
+
+        // When coming back, normalize any transient "stuck" states.
+        ConnectionState current = vm.getState().getValue();
+        if (current == ConnectionState.RECONNECTING ||
+                current == ConnectionState.CONNECTING) {
+            vm.setState(ConnectionState.DISCONNECTED);
+        }
+
         IntentFilter f = new IntentFilter();
         f.addAction(Bus.ACTION_STATE);
         f.addAction(Bus.ACTION_HR_UPDATE);
@@ -802,5 +888,13 @@ public class DashboardFragment extends Fragment {
     public void onPause() {
         super.onPause();
         requireContext().unregisterReceiver(bus);
+
+        // DS-05: cancel any pending auto-reconnect when leaving Dashboard
+        requireContext().startService(
+                new Intent(requireContext(), BleService.class)
+                        .setAction(BleService.ACTION_CANCEL_RECONNECT)
+        );
     }
 }
+
+
