@@ -21,18 +21,62 @@ public class SessionRepository {
         return sessionDao.getAllSessionsLive();
     }
 
+    // ---------- Workouts ----------
+    public LiveData<List<Workout>> getAllWorkoutsLive() {
+        return sessionDao.getAllWorkoutsLive();
+    }
+
+    public androidx.lifecycle.LiveData<Workout> getWorkoutLiveById(long id) {
+        return sessionDao.getWorkoutLiveById(id);
+    }
+
+    public LiveData<java.util.List<WorkoutSummary>> getAllWorkoutSummariesLive() {
+        return sessionDao.getAllWorkoutSummariesLive();
+    }
     // ---------- Session lifecycle ----------
     public long createSession(long startMs) {
+        return createSession(startMs, null);
+    }
+
+    /** Create a new Session row and optionally attach it to a workout. */
+    public long createSession(long startMs, Long workoutId) {
         Session s = new Session();
         s.startedAt = startMs;
         s.endedAt = 0L;
         s.avgBpm = 0;
         s.maxBpm = 0;
+        s.workoutId = workoutId;
         return sessionDao.insertSession(s);
     }
 
     public void finalizeSession(long sessionId, int avg, int max, long endedAt) {
         sessionDao.finalizeSummary(sessionId, endedAt, avg, max);
+    }
+
+    // ---------- Workout lifecycle ----------
+    public long createWorkout(long startMs) {
+        Workout w = new Workout();
+        w.startedAt = startMs;
+        w.endedAt = 0L;
+        w.avgBpm = 0;
+        w.maxBpm = 0;
+        return sessionDao.insertWorkout(w);
+    }
+
+    public void finalizeWorkout(long workoutId, long endedAt, int avg, int max) {
+        sessionDao.finalizeWorkout(workoutId, endedAt, avg, max);
+    }
+
+    public java.util.List<Session> listSessionsForWorkout(long workoutId) {
+        return sessionDao.listSessionsForWorkout(workoutId);
+    }
+
+    public LiveData<List<Session>> getSessionsForWorkoutLive(long workoutId) {
+        return sessionDao.getSessionsForWorkoutLive(workoutId);
+    }
+
+    public Session getSessionById(long id) {
+        return sessionDao.getSessionById(id);
     }
 
     public void updateSession(Session s) {

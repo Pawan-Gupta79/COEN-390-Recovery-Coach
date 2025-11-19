@@ -34,6 +34,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
 import com.team11.smartgym.R;
 import com.team11.smartgym.data.AppPrefs;
+import com.team11.smartgym.data.DatabaseProvider;
 import com.team11.smartgym.model.ConnectionState;
 import com.team11.smartgym.shared.Bus;
 import com.team11.smartgym.ui.common.SnackbarUtil;
@@ -179,8 +180,17 @@ public class DashboardFragment extends Fragment {
             args.putString(WorkoutFragment.ARG_DEVICE_NAME, device == null ? "" : device);
             args.putLong(WorkoutFragment.ARG_STARTED_AT, startedAt);
 
-            NavHostFragment.findNavController(this)
-                    .navigate(R.id.action_dashboard_to_workout, args);
+                // Start workout lifecycle (persisted on background executor)
+                try {
+                    // create workout and wait for id so subsequent sessions attach reliably
+                    long wid = DatabaseProvider.get(requireContext()).getSessionController().startWorkoutSync(startedAt);
+                    if (wid > 0) {
+                        // store current workout id is already handled inside controller; optionally pass to fragment
+                    }
+                } catch (Exception ignored) {}
+
+                NavHostFragment.findNavController(this)
+                        .navigate(R.id.action_dashboard_to_workout, args);
         });
 
         if (vm.getState().getValue() == null) vm.setState(ConnectionState.DISCONNECTED);

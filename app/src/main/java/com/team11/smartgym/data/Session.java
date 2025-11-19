@@ -16,4 +16,6 @@ public class Session {
 
     public int avgBpm;
     public int maxBpm;
+    // Link to Workout; nullable when session is standalone
+    public Long workoutId;
 }
