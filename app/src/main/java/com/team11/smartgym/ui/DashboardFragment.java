@@ -1,10 +1,29 @@
 package com.team11.smartgym.ui;
 
+import static androidx.core.content.ContextCompat.getSystemService;
+
+import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
+import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanFilter;
+import android.bluetooth.le.ScanSettings;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanResult;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -13,6 +32,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.github.mikephil.charting.data.Entry;
 import com.github.mikephil.charting.data.LineData;
@@ -23,6 +43,8 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
@@ -39,6 +61,11 @@ import com.team11.smartgym.model.ConnectionState;
 import com.team11.smartgym.shared.Bus;
 import com.team11.smartgym.ui.common.SnackbarUtil;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+
 public class DashboardFragment extends Fragment {
 
     private Chip chipDevice;
@@ -52,6 +79,31 @@ public class DashboardFragment extends Fragment {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private ActivityResultLauncher<Intent> scanLauncher;
 
+    // Core Bluetooth objects
+    private BluetoothAdapter bluetoothAdapter;
+    private BluetoothLeScanner bleScanner;
+    private BluetoothGatt bluetoothGatt;
+
+    // List of discovered BLE devices shown in the dialog
+    private final List<DeviceItem> foundDevices = new ArrayList<>();
+    private DeviceListAdapter deviceListAdapter;
+    private AlertDialog scanDialog;
+
+    // ---- UUIDs exposed by the BLE device (must match Arduino sketch) ----
+//    private static final UUID HR_SERVICE_UUID =
+//            UUID.fromString("12345678-1234-5678-1234-56789abcdef0");  // Custom Heart Rate–like service
+    private static final UUID HR_SERVICE_UUID =
+            UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb"); // Standard BLE Heart Rate Service
+    private static final UUID HR_CHAR_UUID =
+            UUID.fromString("12345678-1234-5678-1234-56789abcdef1");  // Characteristic that holds BPM data
+    private static final UUID CCCD_UUID =
+            UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");  // Standard Client Characteristic Config (CCCD)
+
+    // Request code for runtime permission dialog
+    private static final int REQ_PERMISSIONS = 42;
+
+
+    //Bus BroadcastReceiver
     private final BroadcastReceiver bus = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
@@ -85,7 +137,7 @@ public class DashboardFragment extends Fragment {
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View v = inflater.inflate(R.layout.fragment_dashboard, container, false);
-
+        // Wire up views
         chipDevice = v.findViewById(R.id.chipDevice);
         chart = v.findViewById(R.id.chart);
         tvBpm = v.findViewById(R.id.tvBpm);
