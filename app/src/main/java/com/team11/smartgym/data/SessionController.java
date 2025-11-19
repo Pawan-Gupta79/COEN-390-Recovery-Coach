@@ -16,6 +16,104 @@ public final class SessionController {
     private long startMs = 0L;
     private final List<Integer> samples = new ArrayList<>();
     private final ExecutorService dbExecutor;
+    private Long currentWorkoutId = null;
+
+    public Long getCurrentWorkoutId() { return currentWorkoutId; }
+
+    /** Start a workout by scheduling its creation on the DB executor. */
+    public synchronized void startWorkout(long workoutStartMs) {
+        currentWorkoutId = null;
+        dbExecutor.execute(() -> {
+            try {
+                long wid = repo.createWorkout(workoutStartMs);
+                currentWorkoutId = wid;
+            } catch (Exception ignored) {
+            }
+        });
+    }
+
+    /**
+     * Start a workout synchronously: submit creation to the DB executor and wait for the inserted id.
+     * This blocks the calling thread until the DB insert completes and returns the new workout id,
+     * and also updates `currentWorkoutId`.
+     * Use carefully from the UI thread (the operation is fast but will block until insert finishes).
+     */
+    public synchronized long startWorkoutSync(long workoutStartMs) {
+        currentWorkoutId = null;
+        try {
+            java.util.concurrent.Callable<Long> task = () -> repo.createWorkout(workoutStartMs);
+            java.util.concurrent.Future<Long> f = dbExecutor.submit(task);
+            Long wid = f.get();
+            if (wid != null) currentWorkoutId = wid;
+            return wid == null ? -1L : wid;
+        } catch (Exception e) {
+            return -1L;
+        }
+    }
+
+    /** End the current workout by computing summary from sessions and persisting. */
+    public synchronized void endWorkout(long endedAt) {
+        final Long wid = currentWorkoutId;
+        if (wid == null) return;
+        dbExecutor.execute(() -> {
+            try {
+                // Compute simple summary: average of session.avgBpm and max of session.maxBpm
+                java.util.List<Session> sessions = repo.listSessionsForWorkout(wid);
+                if (sessions == null || sessions.isEmpty()) {
+                    repo.finalizeWorkout(wid, endedAt, 0, 0);
+                    return;
+                }
+                int sum = 0;
+                int max = 0;
+                int count = 0;
+                long lastEnd = endedAt;
+                for (Session s : sessions) {
+                    sum += s.avgBpm;
+                    if (s.maxBpm > max) max = s.maxBpm;
+                    if (s.endedAt > lastEnd) lastEnd = s.endedAt;
+                    count++;
+                }
+                int avg = count == 0 ? 0 : sum / count;
+                repo.finalizeWorkout(wid, lastEnd, avg, max);
+            } catch (Exception ignored) {}
+        });
+        currentWorkoutId = null;
+    }
+
+    /**
+     * Recompute and persist the workout summary (avg/max/endedAt) from stored sessions.
+     * This does not clear `currentWorkoutId` — use when adding sessions to an ongoing workout.
+     */
+    public synchronized void recomputeWorkoutSummary(Long wid) {
+        if (wid == null) return;
+        dbExecutor.execute(() -> recomputeWorkoutSummarySync(wid));
+    }
+
+    /**
+     * Synchronous variant that computes and persists the workout summary on the current thread.
+     * Call this only from a background thread (e.g. the DB executor) to avoid blocking the UI.
+     */
+    public void recomputeWorkoutSummarySync(long wid) {
+        try {
+            java.util.List<Session> sessions = repo.listSessionsForWorkout(wid);
+            if (sessions == null || sessions.isEmpty()) {
+                repo.finalizeWorkout(wid, 0L, 0, 0);
+                return;
+            }
+            int sum = 0;
+            int max = 0;
+            long lastEnd = 0L;
+            int count = 0;
+            for (Session s : sessions) {
+                sum += s.avgBpm;
+                if (s.maxBpm > max) max = s.maxBpm;
+                if (s.endedAt > lastEnd) lastEnd = s.endedAt;
+                count++;
+            }
+            int avg = count == 0 ? 0 : sum / count;
+            repo.finalizeWorkout(wid, lastEnd, avg, max);
+        } catch (Exception ignored) {}
+    }
 
     public SessionController(SessionRepository repo, ExecutorService dbExecutor) {
         this.repo = repo;
@@ -61,7 +159,7 @@ public final class SessionController {
 
         dbExecutor.execute(() -> {
             try {
-                long sessionId = repo.createSession(persistStart);
+                long sessionId = repo.createSession(persistStart, currentWorkoutId);
                 for (Integer bpm : readingsCopy) {
                     Reading r = new Reading();
                     r.sessionId = sessionId;

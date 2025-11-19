@@ -26,6 +26,9 @@
         <action
             android:id="@+id/action_sessions_to_snapshot"
             app:destination="@id/sessionsSnapshotFragment" />
+        <action
+            android:id="@+id/action_sessions_to_workout"
+            app:destination="@id/workoutSessionsFragment" />
     </fragment>
 
     <fragment
@@ -61,6 +64,16 @@
     <fragment
         android:id="@+id/workoutFragment"
         android:name="com.team11.smartgym.ui.WorkoutFragment"
+        android:label="@string/workout_title" />
+
+    <fragment
+        android:id="@+id/workoutDetailFragment"
+        android:name="com.team11.smartgym.ui.WorkoutDetailFragment"
+        android:label="@string/workout_title" />
+
+    <fragment
+        android:id="@+id/workoutSessionsFragment"
+        android:name="com.team11.smartgym.ui.WorkoutSessionsFragment"
         android:label="@string/workout_title" />
 
     <fragment

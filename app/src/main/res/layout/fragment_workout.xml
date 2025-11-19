@@ -114,4 +114,12 @@
 
     </LinearLayout>
 
+    <!-- Sessions list for this workout (read-only mode) -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvWorkoutSessions"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone" />
+
 </LinearLayout>

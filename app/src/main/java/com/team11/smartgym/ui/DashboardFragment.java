@@ -30,6 +30,8 @@ import android.os.Looper;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
+import com.team11.smartgym.ble.DeviceItem;
+import com.team11.smartgym.ble.DeviceListAdapter;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -50,23 +52,13 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.fragment.NavHostFragment;
 
 import com.github.mikephil.charting.charts.LineChart;
-import com.github.mikephil.charting.components.Description;
-import com.github.mikephil.charting.components.XAxis;
-import com.github.mikephil.charting.data.Entry;
-import com.github.mikephil.charting.data.LineData;
-import com.github.mikephil.charting.data.LineDataSet;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.materialswitch.MaterialSwitch;
-import com.google.android.material.snackbar.Snackbar;
 import com.team11.smartgym.R;
-import com.team11.smartgym.ble.BleService;
-import com.team11.smartgym.data.AppDb;
-import com.team11.smartgym.ble.DeviceItem;
-import com.team11.smartgym.ble.DeviceListAdapter;
 import com.team11.smartgym.data.AppPrefs;
-import com.team11.smartgym.data.SessionRepository;
+import com.team11.smartgym.data.DatabaseProvider;
 import com.team11.smartgym.model.ConnectionState;
 import com.team11.smartgym.shared.Bus;
 import com.team11.smartgym.ui.common.SnackbarUtil;
@@ -115,43 +107,20 @@ public class DashboardFragment extends Fragment {
 
     //Bus BroadcastReceiver
     private final BroadcastReceiver bus = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
+        @Override public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
 
             if (Bus.ACTION_STATE.equals(action)) {
                 String state = intent.getStringExtra(Bus.EXTRA_STATE);
-                if (TextUtils.isEmpty(state)) {
-                    return;
-                }
 
-
+                // ---------------- CHANGED ----------------
                 // Map string state from BLE service to ConnectionState
                 if ("CONNECTED".equals(state)) {
                     vm.setState(ConnectionState.CONNECTED);
-                    tvState.setText("Connected");
-
-                } else if ("Disconnected".equals(state)) {
-                    vm.setState(ConnectionState.DISCONNECTED);
-                    tvState.setText("Disconnected");
-
-                } else if (state.startsWith("Connecting") || state.startsWith("Discovering")) {
+                } /*else if ("CONNECTING".equals(state)) {
                     vm.setState(ConnectionState.CONNECTING);
-                    tvState.setText("Connecting…");
-
-                } else if (state.startsWith("Reconnecting")) {
-                    vm.setState(ConnectionState.RECONNECTING);
-                    // Example: "Reconnecting… (2)"
-                    tvState.setText(state);
-
-                } else if ("ReconnectFailed".equals(state) || "ReconnectFailedNoDevice".equals(state)) {
+                } */else if ("DISCONNECTED".equals(state)) {
                     vm.setState(ConnectionState.DISCONNECTED);
-                    tvState.setText("Reconnect failed");
-                    // Non-blocking retry prompt
-                    SnackbarUtil.show(
-                            requireView(),
-                            "Reconnect failed. Tap Connect to retry."
-                    );
                 }
 
             } else if (Bus.ACTION_HR_UPDATE.equals(action)) {
@@ -165,12 +134,7 @@ public class DashboardFragment extends Fragment {
         }
     };
 
-    public DashboardFragment() {
-        // Required empty public constructor
-    }
-
-    @Nullable
-    @Override
+    @Nullable @Override
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
@@ -188,16 +152,17 @@ public class DashboardFragment extends Fragment {
         LineDataSet set = new LineDataSet(null, "Heart Rate");
         set.setLineWidth(2f);
         set.setDrawCircles(false);
-        LineData ldata = new LineData(set);
-        chart.setData(ldata);
+        LineData data = new LineData(set);
+        chart.setData(data);
         chart.invalidate();
 
         vm = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
         prefs = new AppPrefs(requireContext());
 
-        setupChart();
-
+        //Observer
+        vm.getState().observe(getViewLifecycleOwner(), this::applyState);
         // Restore flags + last device
+
         vm.setAutoReconnectEnabled(prefs.isAutoReconnect());
         String lastName = prefs.getLastDeviceName();
         String lastAddr = prefs.getLastDeviceAddr();
@@ -205,152 +170,40 @@ public class DashboardFragment extends Fragment {
             vm.setDevice(lastName, lastAddr);
             chipDevice.setText(lastName);
         }
-        //Observer
-        vm.getState().observe(getViewLifecycleOwner(), this::applyState);
 
-// Scan result
-        scanLauncher = registerForActivityResult(
-                new ActivityResultContracts.StartActivityForResult(),
-                result -> {
-                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
-                        Intent data = result.getData();
-                        String name = data.getStringExtra(DeviceScanActivity.EXTRA_DEVICE_NAME);
-                        String addr = data.getStringExtra(DeviceScanActivity.EXTRA_DEVICE_ADDR);
-                        if (!TextUtils.isEmpty(name)) {
-                            vm.setDevice(name, addr);
-                            prefs.setLastDevice(name, addr);
-                            vm.setState(ConnectionState.CONNECTING);
-                            handler.postDelayed(() -> {
-                                vm.setState(ConnectionState.CONNECTED);
-                                SnackbarUtil.show(requireView(), getString(R.string.connected_snackbar));
-                            }, 700);
-                        }
-                    }
-                });
+
+
         vm.getState().observe(getViewLifecycleOwner(), s -> {
-            if (s == null) return;
             applyState(s);
             btnStartWorkout.setEnabled(s == ConnectionState.CONNECTED);
         });
 
-        // BPM
         vm.getBpm().observe(getViewLifecycleOwner(),
                 bpm -> tvBpm.setText(bpm == null ? "-- bpm" : getString(R.string.hr_bpm, bpm)));
 
+        // Scan result
 
-        // Get system Bluetooth adapter
-        BluetoothManager manager =
-                (BluetoothManager) requireContext()
-                        .getSystemService(Context.BLUETOOTH_SERVICE);
 
-        bluetoothAdapter = (manager != null) ? manager.getAdapter() : null;
-
-        // Main button: check permissions/Bluetooth and then start scanning
-        btnConnect.setOnClickListener(view -> {
-
-            // 1) If Fake Sensor is ON → do NOT open scan dialog
-            if (switchFake.isChecked()) {
-                vm.setState(ConnectionState.CONNECTED);
-                vm.startFakeSensor();                // <--- start generating fake BPM
-                vm.setFakeSensorEnabled(true);
-                SnackbarUtil.show(requireView(), "Fake sensor connected");
-                btnDisconnect.setEnabled(true);
-                return;
-            }
-
-            // 2) Auto-reconnect (real device)
-            boolean auto = vm.isAutoReconnectEnabled();
-            String savedName = vm.getDeviceName().getValue();
-            String savedAddr = vm.getDeviceAddr();
-
-            if (auto && !TextUtils.isEmpty(savedName) && !TextUtils.isEmpty(savedAddr)) {
-                vm.setState(ConnectionState.CONNECTING);
-
-                handler.postDelayed(() -> {
-                    vm.setState(ConnectionState.CONNECTED);
-
-                    // Start real BLE connection
-                    requireContext().startService(
-                            new Intent(requireContext(), BleService.class)
-                                    .setAction(BleService.ACTION_CONNECT)
-                                    .putExtra("EXTRA_NAME", savedName)
-                                    .putExtra("EXTRA_ADDR", savedAddr)
-                    );
-
-                    SnackbarUtil.show(requireView(), "Auto reconnected");
-                }, 650);
-
-                return;
-            }
-
-            // 3) REAL BLE SCAN FLOW (manual connect)
-
-            if (!hasAllPermissions()) {
-                // Ask user for required runtime permissions
-                requestAllPermissions();
-
-            } else {
-
-                // Ensure Bluetooth is enabled
-                if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
-                    Toast.makeText(requireContext(), "Please enable Bluetooth", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                // Open dialog to scan and pick a device
-                if(!vm.isFakeSensorEnabled()){
-                showScanDialog();
-                }
-            }
+        // Connect
+        btnConnect.setOnClickListener(click -> {
+            vm.setState(ConnectionState.CONNECTING);  // Update state immediately
+            startBleFlow();
 
         });
 
-        btnDisconnect.setOnClickListener(vw ->
-                new MaterialAlertDialogBuilder(requireContext())
-                        .setIcon(android.R.drawable.ic_menu_close_clear_cancel)
-                        .setTitle(R.string.confirm_disconnect_title)
-                        .setMessage(R.string.confirm_disconnect_msg)
-                        .setNegativeButton(android.R.string.cancel, null)
-                        .setPositiveButton(R.string.disconnect, (d, w) -> {
-                            // 1) Stop fake sensor
-                            vm.stopFakeSensor();
+        // Disconnect (confirm)
+        btnDisconnect.setOnClickListener(vw -> {
+            requireContext().stopService(new Intent(requireContext(), BleService.class));
+            vm.setState(ConnectionState.DISCONNECTED);
+
+            // RESET CHART
+            resetChart();            // Reset chart safely
+            sampleIdx = 0;
+            tvBpm.setText("-- bpm");
+
+        });
 
 
-                            // 2) Disconnect REAL BLE device if available
-                            if (bluetoothGatt != null) {
-
-                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                                        ContextCompat.checkSelfPermission(
-                                                requireContext(),
-                                                Manifest.permission.BLUETOOTH_CONNECT
-                                        ) != PackageManager.PERMISSION_GRANTED) {
-
-                                    Toast.makeText(requireContext(),
-                                            "Missing BLUETOOTH_CONNECT permission",
-                                            Toast.LENGTH_SHORT).show();
-                                    return;
-                                }
-
-                                bluetoothGatt.disconnect();
-                                bluetoothGatt.close();
-                                bluetoothGatt = null;
-                            }
-
-                            // 3) Update global state
-                            vm.setState(ConnectionState.DISCONNECTED);
-
-                            // 4) Reset UI
-                            tvState.setText("Disconnected");
-                            tvBpm.setText("-- bpm");
-                            resetChart();
-                            sampleIdx = 0;
-
-                            // 5) Notify user
-                            SnackbarUtil.show(requireView(),
-                                    getString(R.string.disconnected_snackbar));
-                        })
-                        .show()
-        );
 
         // Fake sensor toggle — also mark CONNECTED so Start is enabled
         switchFake.setChecked(vm.isFakeSensorEnabled());
@@ -358,432 +211,45 @@ public class DashboardFragment extends Fragment {
             vm.setFakeSensorEnabled(isChecked);
             if (isChecked) {
                 if (vm.getState().getValue() != ConnectionState.CONNECTED) {
-                    vm.startFakeSensor();
                     vm.setState(ConnectionState.CONNECTED);
                 }
                 SnackbarUtil.show(requireView(), getString(R.string.fake_on));
             } else {
-                // 1) Stop fake sensor if running
-                vm.stopFakeSensor();
-                vm.setFakeSensorEnabled(false);
-                // 2) Update global state
-                vm.setState(ConnectionState.DISCONNECTED);
-
-                // 3) Reset UI
-                tvState.setText("Disconnected");
-
-                tvBpm.setText("-- bpm");
-                resetChart();
-                sampleIdx = 0;
                 // When turning off, keep current connection state; BPM will clear to "--"
-               /* SnackbarUtil.show(requireView(), getString(R.string.fake_off));*/
+                SnackbarUtil.show(requireView(), getString(R.string.fake_off));
             }
         });
 
-        // Start Workout
+        // Start Workout (guard)
         btnStartWorkout.setOnClickListener(vw -> {
             ConnectionState s = vm.getState().getValue();
             if (s != ConnectionState.CONNECTED) {
-                SnackbarUtil.show(requireView(),
-                        getString(R.string.need_connection_snackbar));
+                SnackbarUtil.show(requireView(), getString(R.string.need_connection_snackbar));
                 return;
             }
-
             String device = vm.getDeviceName().getValue();
             long startedAt = System.currentTimeMillis();
 
-            // DS-06.1: create Session row on Start and get its ID.
-            SessionRepository sessionRepo =
-                    new SessionRepository(AppDb.get(requireContext()).sessionDao());
-            long sessionId = sessionRepo.createSession(startedAt);
-
             Bundle args = new Bundle();
-            args.putString(WorkoutFragment.ARG_DEVICE_NAME,
-                    device == null ? "" : device);
+            args.putString(WorkoutFragment.ARG_DEVICE_NAME, device == null ? "" : device);
             args.putLong(WorkoutFragment.ARG_STARTED_AT, startedAt);
-            // Pass sessionId forward so WorkoutFragment can attach samples later (DS-06.2+).
-            args.putLong("sessionId", sessionId);
 
-            NavHostFragment.findNavController(this)
-                    .navigate(R.id.action_dashboard_to_workout, args);
+                // Start workout lifecycle (persisted on background executor)
+                try {
+                    // create workout and wait for id so subsequent sessions attach reliably
+                    long wid = DatabaseProvider.get(requireContext()).getSessionController().startWorkoutSync(startedAt);
+                    if (wid > 0) {
+                        // store current workout id is already handled inside controller; optionally pass to fragment
+                    }
+                } catch (Exception ignored) {}
+
+                NavHostFragment.findNavController(this)
+                        .navigate(R.id.action_dashboard_to_workout, args);
         });
 
         if (vm.getState().getValue() == null) vm.setState(ConnectionState.DISCONNECTED);
         return v;
     }
-
-
-
-
-
-    // ------------------------------------------------------
-    // Permissions
-    // ------------------------------------------------------
-
-    /**
-     * Checks if all required Bluetooth/location permissions are granted
-     * and Bluetooth is enabled.
-     */
-    private boolean hasAllPermissions() {
-        // If adapter is missing or disabled, treat as "no"
-        BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-        if (adapter == null || !adapter.isEnabled()) {
-            return false;
-        }
-
-        // Android 12+ requires BLUETOOTH_SCAN + BLUETOOTH_CONNECT + location
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_SCAN)
-                    == PackageManager.PERMISSION_GRANTED
-                    && ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT)
-                    == PackageManager.PERMISSION_GRANTED
-                    && ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
-                    == PackageManager.PERMISSION_GRANTED;
-        } else {
-            // Older devices only need location for BLE scanning
-            return ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_FINE_LOCATION)
-                    == PackageManager.PERMISSION_GRANTED;
-        }
-    }
-
-    /**
-     * Requests the appropriate set of permissions depending on Android version.
-     */
-    private void requestAllPermissions() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            requestPermissions(
-                    new String[]{
-                            Manifest.permission.BLUETOOTH_SCAN,
-                            Manifest.permission.BLUETOOTH_CONNECT,
-                            Manifest.permission.ACCESS_FINE_LOCATION
-                    },
-                    REQ_PERMISSIONS
-            );
-        } else {
-            requestPermissions(
-                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                    REQ_PERMISSIONS
-            );
-        }
-    }
-
-    /**
-     * Called when the user responds to the permission dialog.
-     */
-    @Override
-    public void onRequestPermissionsResult(int requestCode,
-                                           @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-        if (requestCode == REQ_PERMISSIONS) {
-            if (hasAllPermissions()) {
-                // If everything is granted, go straight to scanning
-                showScanDialog();
-            } else {
-                Toast.makeText(requireContext(), "Permissions denied, BLE won’t work", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    // ------------------------------------------------------
-    // Scan dialog
-    // ------------------------------------------------------
-
-    /**
-     * Shows a dialog listing discovered BLE devices and starts scanning.
-     */
-    private void showScanDialog() {
-        if (bluetoothAdapter == null) {
-            Toast.makeText(requireContext(), "Bluetooth not available", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        // Get LE scanner from adapter
-        bleScanner = bluetoothAdapter.getBluetoothLeScanner();
-        if (bleScanner == null) {
-            Toast.makeText(requireContext(), "BLE scanner not available", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Reset previous scan results
-        foundDevices.clear();
-        deviceListAdapter = new DeviceListAdapter(requireContext(), foundDevices);
-
-        tvState.setText("Scanning for BLE devices...");
-
-        // Dialog shows devices as they are discovered
-        AlertDialog.Builder builder = new AlertDialog.Builder(requireContext());
-        builder.setTitle("Select BLE Device");
-
-        // When the user taps an entry, stop scanning and connect
-        builder.setAdapter(deviceListAdapter, (dialog, which) -> {
-            stopScan();
-            DeviceItem item = foundDevices.get(which);
-            connectToDevice(item.device);
-        });
-
-        // User can cancel scan
-        builder.setNegativeButton("Cancel", (dialog, which) -> {
-            stopScan();
-            tvState.setText("Scan cancelled");
-        });
-
-        scanDialog = builder.create();
-        scanDialog.show();
-
-        // Begin BLE scan
-        startScan();
-    }
-
-    /**
-     * Starts a BLE scan filtered by our custom HR service UUID.
-     */
-    private void startScan() {
-        if (bleScanner == null) return;
-
-        // Ensure we still have scan permission (mainly Android 12+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_SCAN)
-                        != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(requireContext(), "No BLUETOOTH_SCAN permission", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Filter so we primarily see devices that advertise our HR service
-        ScanFilter filter = new ScanFilter.Builder()
-                .setServiceUuid(new android.os.ParcelUuid(HR_SERVICE_UUID))
-                .build();
-
-        // Low latency = faster results, more power usage
-        ScanSettings settings = new ScanSettings.Builder()
-                .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
-                .build();
-
-        bleScanner.startScan(Collections.singletonList(filter), settings, scanCallback);
-        tvState.setText("Scanning...");
-    }
-
-    /**
-     * Stops an ongoing BLE scan if active.
-     */
-    private void stopScan() {
-        if (bleScanner == null) return;
-
-        // Permission check required for stopScan on Android 12+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_SCAN)
-                        != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-
-        try {
-            bleScanner.stopScan(scanCallback);
-        } catch (Exception ignored) {
-            // Swallow any internal scanner exceptions
-        }
-    }
-
-    /**
-     * Callback that receives scan results and updates the device list.
-     */
-    private final ScanCallback scanCallback = new ScanCallback() {
-        @Override
-        public void onScanResult(int callbackType, ScanResult result) {
-            BluetoothDevice dev = result.getDevice();
-            if (dev == null) return;
-
-            String name = null;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT)
-                            == PackageManager.PERMISSION_GRANTED) {
-                name = dev.getName();
-            } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                name = dev.getName(); // old Android doesn't require permission
-            }
-            if (name == null && result.getScanRecord() != null) {
-                name = result.getScanRecord().getDeviceName();
-            }
-            if (name == null || name.isEmpty()) {
-                name = "(Unknown)";
-            }
-
-
-            // Avoid adding the same device twice
-            for (DeviceItem item : foundDevices) {
-                if (item.address.equals(dev.getAddress())) {
-                    return;
-                }
-            }
-
-            // Wrap raw device into our DeviceItem model
-            DeviceItem item = new DeviceItem(name, dev.getAddress(), dev);
-            foundDevices.add(item);
-            // Update UI to reflect the new device count
-            if (getActivity() != null) {
-                getActivity().runOnUiThread(() -> {
-                    tvState.setText("Found " + foundDevices.size() + " device(s)");
-                    if (deviceListAdapter != null) deviceListAdapter.notifyDataSetChanged();
-                });
-            }
-        }
-
-        @Override
-        public void onScanFailed(int errorCode) {
-            // Show scan error in status text
-            if (getActivity() != null) {
-                getActivity().runOnUiThread(() ->
-                        tvState.setText("Scan failed: " + errorCode)
-                );
-            }
-        }
-    };
-
-// ------------------------------------------------------
-        // GATT connection & Heart Rate notifications
-        // ------------------------------------------------------
-
-        /**
-         * Initiates a GATT connection to the selected BLE device.
-         */
-        private void connectToDevice(BluetoothDevice device) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT)
-                            == PackageManager.PERMISSION_GRANTED) {
-                tvState.setText("Connecting to " + device.getName() + "...");
-            } else if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
-                tvState.setText("Connecting to " + device.getName() + "...");
-            }
-
-            // Android 12+ requires BLUETOOTH_CONNECT permission to connect
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                    ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT)
-                            != PackageManager.PERMISSION_GRANTED) {
-                Toast.makeText(requireContext(), "No BLUETOOTH_CONNECT permission", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            // Use LE-only transport where available, fallback for older versions
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                bluetoothGatt = device.connectGatt(requireContext(), false, gattCallback,
-                        BluetoothDevice.TRANSPORT_LE);
-            } else {
-                bluetoothGatt = device.connectGatt(requireContext(), false, gattCallback);
-            }
-        }
-
-        /**
-         * Handles connection events, service discovery, and incoming HR updates.
-         */
-        private final BluetoothGattCallback gattCallback = new BluetoothGattCallback() {
-
-            /**
-             * Called when the connection state changes (connected/disconnected).
-             */
-            @Override
-            public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState) {
-                if (newState == BluetoothGatt.STATE_CONNECTED) {
-                    // Once connected, start discovering services on the device
-                    getActivity().runOnUiThread(() -> tvState.setText("Connected. Discovering services..."));
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                        if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT)
-                                == PackageManager.PERMISSION_GRANTED) {
-                            gatt.discoverServices();
-                        } else {
-                            //request permission here
-                            Toast.makeText(requireContext(), "Missing BLUETOOTH_CONNECT permission", Toast.LENGTH_SHORT).show();
-                        }
-                    } else {
-                        // Older Android versions don't need explicit permission for this
-                        gatt.discoverServices();
-                    }
-                } else if (newState == BluetoothGatt.STATE_DISCONNECTED) {
-                    // Reset UI when disconnected
-                    getActivity().runOnUiThread(() -> {
-                        tvState.setText("Disconnected");
-                        tvBpm.setText("--");
-                    });
-                }
-            }
-
-            /**
-             * Called when all services are discovered on the remote device.
-             */
-            @Override
-            public void onServicesDiscovered(BluetoothGatt gatt, int status) {
-                // Look up our custom HR service
-                BluetoothGattService svc = gatt.getService(HR_SERVICE_UUID);
-                if (svc == null) {
-                    getActivity().runOnUiThread(() -> tvState.setText("HR service not found"));
-                    return;
-                }
-
-                // Look up the characteristic that contains BPM data
-                BluetoothGattCharacteristic hrChar = svc.getCharacteristic(HR_CHAR_UUID);
-                if (hrChar == null) {
-                    getActivity().runOnUiThread(() -> tvState.setText("HR characteristic not found"));
-                    return;
-                }
-
-                // Enable notifications for the HR characteristic
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.BLUETOOTH_CONNECT)
-                            == PackageManager.PERMISSION_GRANTED) {
-                        gatt.setCharacteristicNotification(hrChar, true);
-                    } else {
-                        //request permission here
-                        gatt.setCharacteristicNotification(hrChar, true);
-                    }
-                } else {
-                    // Older Android versions don't need explicit permission for this
-                    gatt.setCharacteristicNotification(hrChar, true);
-                }
-
-
-                // Write to its CCCD descriptor so the peripheral actually pushes updates
-                BluetoothGattDescriptor cccd = hrChar.getDescriptor(CCCD_UUID);
-                if (cccd != null) {
-                    cccd.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-                    gatt.writeDescriptor(cccd);
-                }
-
-                getActivity().runOnUiThread(() -> tvState.setText("Receiving BPM..."));
-            }
-
-            /**
-             * Called whenever the HR characteristic sends a new value (notification).
-             */
-            @Override
-            public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-                if (HR_CHAR_UUID.equals(characteristic.getUuid())) {
-                    // Read the first byte as an unsigned 8-bit integer = BPM
-                    int bpm = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
-
-                    // Update BPM UI on the main thread
-                    getActivity().runOnUiThread(() -> tvBpm.setText(String.valueOf(bpm)));
-                }
-            }
-        };
-
-        @Override
-        public void onDestroy() {
-            super.onDestroy();
-
-            // Ensure we stop scanning and release GATT resources when activity is destroyed
-            stopScan();
-            if (bluetoothGatt != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                    if (ContextCompat.checkSelfPermission(requireContext(),
-                            Manifest.permission.BLUETOOTH_CONNECT) == PackageManager.PERMISSION_GRANTED) {
-                        bluetoothGatt.close();
-                    }
-                } else {
-                    bluetoothGatt.close();
-                }
-                bluetoothGatt = null;
-            }
-
-        }
-    //FAKE SENSOR METHODS
 
     private void applyState(ConnectionState s) {
         switch (s) {
@@ -807,29 +273,7 @@ public class DashboardFragment extends Fragment {
         }
     }
 
-    private void setupChart() {
-        LineDataSet set = new LineDataSet(null, "Heart Rate");
-        set.setLineWidth(2f);
-        set.setDrawCircles(false);
-        set.setDrawValues(false);
-
-        LineData data = new LineData(set);
-        chart.setData(data);
-
-        Description desc = new Description();
-        desc.setText("");
-        chart.setDescription(desc);
-
-        XAxis xAxis = chart.getXAxis();
-        xAxis.setDrawGridLines(false);
-        xAxis.setDrawAxisLine(false);
-        chart.getAxisLeft().setDrawAxisLine(false);
-        chart.getAxisRight().setEnabled(false);
-        chart.getLegend().setEnabled(false);
-    }
-
     private void startBleFlow() {
-        // Start BLE service + go to scan screen
         requireContext().startService(
                 new Intent(requireContext(), BleService.class)
                         .setAction(BleService.ACTION_START)
@@ -853,30 +297,20 @@ public class DashboardFragment extends Fragment {
         if (data == null) return;
 
         LineDataSet ds = (LineDataSet) data.getDataSetByIndex(0);
-        if (ds == null) {
-            ds = new LineDataSet(null, "Heart Rate");
-            data.addDataSet(ds);
-        }
+        if (ds == null) return;
 
-        data.addEntry(new Entry(sampleIdx++, bpm), 0);
+        ds.addEntry(new Entry(sampleIdx++, bpm));
+        while (ds.getEntryCount() > 60) ds.removeFirst();
+
         data.notifyDataChanged();
         chart.notifyDataSetChanged();
         chart.moveViewToX(sampleIdx);
         chart.invalidate();
     }
 
-
     @Override
     public void onResume() {
         super.onResume();
-
-        // When coming back, normalize any transient "stuck" states.
-        ConnectionState current = vm.getState().getValue();
-        if (current == ConnectionState.RECONNECTING ||
-                current == ConnectionState.CONNECTING) {
-            vm.setState(ConnectionState.DISCONNECTED);
-        }
-
         IntentFilter f = new IntentFilter();
         f.addAction(Bus.ACTION_STATE);
         f.addAction(Bus.ACTION_HR_UPDATE);
@@ -888,12 +322,6 @@ public class DashboardFragment extends Fragment {
     public void onPause() {
         super.onPause();
         requireContext().unregisterReceiver(bus);
-
-        // DS-05: cancel any pending auto-reconnect when leaving Dashboard
-        requireContext().startService(
-                new Intent(requireContext(), BleService.class)
-                        .setAction(BleService.ACTION_CANCEL_RECONNECT)
-        );
     }
 }
 
