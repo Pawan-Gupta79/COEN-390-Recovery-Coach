@@ -22,8 +22,7 @@ import java.util.Random;
 public class DashboardViewModel extends ViewModel {
 
     // ----- Connection / device -----
-    private final MutableLiveData<ConnectionState> state =
-            new MutableLiveData<>(ConnectionState.DISCONNECTED); // default
+    private final MutableLiveData<ConnectionState> state = new MutableLiveData<>();
     private final MutableLiveData<String> deviceName = new MutableLiveData<>("");
     private @Nullable String deviceAddr;
 
