@@ -91,9 +91,9 @@ public class DashboardFragment extends Fragment {
     private AlertDialog scanDialog;
 
     // ---- UUIDs exposed by the BLE device (must match Arduino sketch) ----
+//    private static final UUID HR_SERVICE_UUID =
+//            UUID.fromString("12345678-1234-5678-1234-56789abcdef0");  // Custom Heart Rate–like service
     private static final UUID HR_SERVICE_UUID =
-            UUID.fromString("12345678-1234-5678-1234-56789abcdef0");  // Custom Heart Rate–like service
-    private static final UUID STANDARD_HR_SERVICE_UUID =
             UUID.fromString("0000180d-0000-1000-8000-00805f9b34fb"); // Standard BLE Heart Rate Service
     private static final UUID HR_CHAR_UUID =
             UUID.fromString("12345678-1234-5678-1234-56789abcdef1");  // Characteristic that holds BPM data
@@ -152,23 +152,19 @@ public class DashboardFragment extends Fragment {
         btnStartWorkout = v.findViewById(R.id.btnStartWorkout);
         switchFake = v.findViewById(R.id.switchFake);
 
-        //Chart
+
         //Chart
         LineDataSet set = new LineDataSet(null, "Heart Rate");
         set.setLineWidth(2f);
         set.setDrawCircles(false);
-        LineData data = new LineData(set);
-        chart.setData(data);
+        LineData ldata = new LineData(set);
+        chart.setData(ldata);
         chart.invalidate();
 
         vm = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
         prefs = new AppPrefs(requireContext());
 
-        //Observer
-        //Observer
-        vm.getState().observe(getViewLifecycleOwner(), this::applyState);
         // Restore flags + last device
-
         vm.setAutoReconnectEnabled(prefs.isAutoReconnect());
         String lastName = prefs.getLastDeviceName();
         String lastAddr = prefs.getLastDeviceAddr();
@@ -176,7 +172,28 @@ public class DashboardFragment extends Fragment {
             vm.setDevice(lastName, lastAddr);
             chipDevice.setText(lastName);
         }
+        //Observer
+        vm.getState().observe(getViewLifecycleOwner(), this::applyState);
 
+// Scan result
+        scanLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK && result.getData() != null) {
+                        Intent data = result.getData();
+                        String name = data.getStringExtra(DeviceScanActivity.EXTRA_DEVICE_NAME);
+                        String addr = data.getStringExtra(DeviceScanActivity.EXTRA_DEVICE_ADDR);
+                        if (!TextUtils.isEmpty(name)) {
+                            vm.setDevice(name, addr);
+                            prefs.setLastDevice(name, addr);
+                            vm.setState(ConnectionState.CONNECTING);
+                            handler.postDelayed(() -> {
+                                vm.setState(ConnectionState.CONNECTED);
+                                SnackbarUtil.show(requireView(), getString(R.string.connected_snackbar));
+                            }, 700);
+                        }
+                    }
+                });
         vm.getState().observe(getViewLifecycleOwner(), s -> {
             applyState(s);
             btnStartWorkout.setEnabled(s == ConnectionState.CONNECTED);
@@ -195,39 +212,110 @@ public class DashboardFragment extends Fragment {
 
         // Main button: check permissions/Bluetooth and then start scanning
         btnConnect.setOnClickListener(view -> {
+
+            // 1) If Fake Sensor is ON → do NOT open scan dialog
+            if (switchFake.isChecked()) {
+                vm.setState(ConnectionState.CONNECTED);
+                vm.startFakeSensor();                // <--- start generating fake BPM
+                vm.setFakeSensorEnabled(true);
+                SnackbarUtil.show(requireView(), "Fake sensor connected");
+                btnDisconnect.setEnabled(true);
+                return;
+            }
+
+            // 2) Auto-reconnect (real device)
+            boolean auto = vm.isAutoReconnectEnabled();
+            String savedName = vm.getDeviceName().getValue();
+            String savedAddr = vm.getDeviceAddr();
+
+            if (auto && !TextUtils.isEmpty(savedName) && !TextUtils.isEmpty(savedAddr)) {
+                vm.setState(ConnectionState.CONNECTING);
+
+                handler.postDelayed(() -> {
+                    vm.setState(ConnectionState.CONNECTED);
+
+                    // Start real BLE connection
+                    requireContext().startService(
+                            new Intent(requireContext(), BleService.class)
+                                    .setAction(BleService.ACTION_CONNECT)
+                                    .putExtra("EXTRA_NAME", savedName)
+                                    .putExtra("EXTRA_ADDR", savedAddr)
+                    );
+
+                    SnackbarUtil.show(requireView(), "Auto reconnected");
+                }, 650);
+
+                return;
+            }
+
+            // 3) REAL BLE SCAN FLOW (manual connect)
+
             if (!hasAllPermissions()) {
                 // Ask user for required runtime permissions
                 requestAllPermissions();
+
             } else {
-                // Ensure Bluetooth itself is enabled
+
+                // Ensure Bluetooth is enabled
                 if (bluetoothAdapter == null || !bluetoothAdapter.isEnabled()) {
                     Toast.makeText(requireContext(), "Please enable Bluetooth", Toast.LENGTH_SHORT).show();
                     return;
                 }
+
                 // Open dialog to scan and pick a device
+                if(!vm.isFakeSensorEnabled()){
                 showScanDialog();
-            }
-        });
-
-        btnDisconnect.setOnClickListener(view -> {
-            if (bluetoothGatt != null) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                        ContextCompat.checkSelfPermission(requireContext(),
-                                Manifest.permission.BLUETOOTH_CONNECT) != PackageManager.PERMISSION_GRANTED) {
-                    Toast.makeText(requireContext(), "No BLUETOOTH_CONNECT permission", Toast.LENGTH_SHORT).show();
-                    return;
                 }
-
-                bluetoothGatt.disconnect();
-                bluetoothGatt.close();
-                bluetoothGatt = null;
-                tvState.setText("Disconnected");
-                tvBpm.setText("--");
-                Toast.makeText(requireContext(), "Disconnected", Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(requireContext(), "No device connected", Toast.LENGTH_SHORT).show();
             }
+
         });
+
+        btnDisconnect.setOnClickListener(vw ->
+                new MaterialAlertDialogBuilder(requireContext())
+                        .setIcon(android.R.drawable.ic_menu_close_clear_cancel)
+                        .setTitle(R.string.confirm_disconnect_title)
+                        .setMessage(R.string.confirm_disconnect_msg)
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .setPositiveButton(R.string.disconnect, (d, w) -> {
+                            // 1) Stop fake sensor
+                            vm.stopFakeSensor();
+
+
+                            // 2) Disconnect REAL BLE device if available
+                            if (bluetoothGatt != null) {
+
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                                        ContextCompat.checkSelfPermission(
+                                                requireContext(),
+                                                Manifest.permission.BLUETOOTH_CONNECT
+                                        ) != PackageManager.PERMISSION_GRANTED) {
+
+                                    Toast.makeText(requireContext(),
+                                            "Missing BLUETOOTH_CONNECT permission",
+                                            Toast.LENGTH_SHORT).show();
+                                    return;
+                                }
+
+                                bluetoothGatt.disconnect();
+                                bluetoothGatt.close();
+                                bluetoothGatt = null;
+                            }
+
+                            // 3) Update global state
+                            vm.setState(ConnectionState.DISCONNECTED);
+
+                            // 4) Reset UI
+                            tvState.setText("Disconnected");
+                            tvBpm.setText("-- bpm");
+                            resetChart();
+                            sampleIdx = 0;
+
+                            // 5) Notify user
+                            SnackbarUtil.show(requireView(),
+                                    getString(R.string.disconnected_snackbar));
+                        })
+                        .show()
+        );
 
         // Fake sensor toggle — also mark CONNECTED so Start is enabled
         switchFake.setChecked(vm.isFakeSensorEnabled());
@@ -235,12 +323,25 @@ public class DashboardFragment extends Fragment {
             vm.setFakeSensorEnabled(isChecked);
             if (isChecked) {
                 if (vm.getState().getValue() != ConnectionState.CONNECTED) {
+                    vm.startFakeSensor();
                     vm.setState(ConnectionState.CONNECTED);
                 }
                 SnackbarUtil.show(requireView(), getString(R.string.fake_on));
             } else {
+                // 1) Stop fake sensor if running
+                vm.stopFakeSensor();
+                vm.setFakeSensorEnabled(false);
+                // 2) Update global state
+                vm.setState(ConnectionState.DISCONNECTED);
+
+                // 3) Reset UI
+                tvState.setText("Disconnected");
+
+                tvBpm.setText("-- bpm");
+                resetChart();
+                sampleIdx = 0;
                 // When turning off, keep current connection state; BPM will clear to "--"
-                SnackbarUtil.show(requireView(), getString(R.string.fake_off));
+               /* SnackbarUtil.show(requireView(), getString(R.string.fake_off));*/
             }
         });
 
