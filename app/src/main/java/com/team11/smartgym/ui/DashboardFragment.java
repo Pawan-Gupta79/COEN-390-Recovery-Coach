@@ -30,6 +30,8 @@ import android.os.Looper;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
+import com.team11.smartgym.ble.DeviceItem;
+import com.team11.smartgym.ble.DeviceListAdapter;
 import android.view.ViewGroup;
 import android.widget.TextView;
 import android.widget.Toast;
