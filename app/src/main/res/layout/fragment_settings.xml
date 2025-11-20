@@ -85,7 +85,7 @@
         android:id="@+id/btnDebugLiveHr"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Open Live HR (Debug)"
+        android:text="Open BLE Debug (Scan)"
         android:visibility="gone"
         android:layout_marginTop="12dp" />
 
