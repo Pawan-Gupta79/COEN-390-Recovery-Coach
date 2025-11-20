@@ -23,7 +23,7 @@ import com.team11.smartgym.BuildConfig;
 import com.team11.smartgym.R;
 import com.team11.smartgym.data.AppPrefs;
 import com.team11.smartgym.data.SessionManager;
-import com.team11.smartgym.hr.ui.livehr.LiveHeartRateHostActivity;
+import com.team11.smartgym.debug.BluetoothDebugScanActivity;
 
 public class SettingsFragment extends Fragment {
 
@@ -47,12 +47,12 @@ public class SettingsFragment extends Fragment {
         session = new SessionManager(requireContext());
 
         // Find views
-        login       = v.findViewById(R.id.login);
-        viewProfile = v.findViewById(R.id.viewProfile);
-        editProfile = v.findViewById(R.id.editProfile);
+        login             = v.findViewById(R.id.login);
+        viewProfile       = v.findViewById(R.id.viewProfile);
+        editProfile       = v.findViewById(R.id.editProfile);
         switchAutoReconnect = v.findViewById(R.id.switchAutoReconnect);
-        btnLogout   = v.findViewById(R.id.btnLogout);
-        btnDebug    = v.findViewById(R.id.btnDebugLiveHr);
+        btnLogout         = v.findViewById(R.id.btnLogout);
+        btnDebug          = v.findViewById(R.id.btnDebugLiveHr);
 
         NavController navController =
                 Navigation.findNavController(requireActivity(), R.id.nav_host);
@@ -125,7 +125,8 @@ public class SettingsFragment extends Fragment {
             if (BuildConfig.DEBUG) {
                 btnDebug.setVisibility(View.VISIBLE);
                 btnDebug.setOnClickListener(view -> {
-                    Intent intent = new Intent(requireContext(), LiveHeartRateHostActivity.class);
+                    // Open the BLE debug scan activity when app is run normally
+                    Intent intent = new Intent(requireContext(), BluetoothDebugScanActivity.class);
                     startActivity(intent);
                 });
             } else {
