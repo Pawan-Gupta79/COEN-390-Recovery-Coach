@@ -11,10 +11,12 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import android.widget.TextView;
 
 import com.team11.smartgym.R;
 import com.team11.smartgym.data.DatabaseProvider;
 import com.team11.smartgym.data.SessionRepository;
+import com.team11.smartgym.data.WorkoutSummary;
 
 public class SessionsFragment extends Fragment {
 
@@ -34,6 +36,9 @@ public class SessionsFragment extends Fragment {
 
         rvSessions = v.findViewById(R.id.rvSessions);
         tvEmptyState = v.findViewById(R.id.tvEmptyState);
+        TextView tvTitle = v.findViewById(R.id.tvSessionsTitle);
+        // This is the top-level Sessions screen (bottom-nav). Show "Workout" here.
+        if (tvTitle != null) tvTitle.setText(R.string.workout_title);
 
         // Adapter (we show workouts grouped list)
         adapter = new SessionsAdapter();
@@ -45,7 +50,7 @@ public class SessionsFragment extends Fragment {
         // Repository
         SessionRepository repo = DatabaseProvider.get(requireContext()).getSessionRepository();
 
-        // Observe workout summaries (includes session counts) and update UI
+        // Observe workout summaries (includes session counts and singleSessionType via DAO)
         repo.getAllWorkoutSummariesLive().observe(getViewLifecycleOwner(), summaries -> {
             workoutsAdapter.submitList(summaries);
             rvSessions.setVisibility((summaries == null || summaries.isEmpty()) ? View.GONE : View.VISIBLE);

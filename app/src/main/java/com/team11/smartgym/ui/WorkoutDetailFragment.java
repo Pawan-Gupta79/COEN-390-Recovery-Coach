@@ -30,6 +30,9 @@ public class WorkoutDetailFragment extends Fragment {
     private SessionsAdapter sessionsAdapter;
 
     private SessionRepository repo;
+    // When true, the UI is showing a single session detail and workout observer
+    // should not overwrite those values.
+    private boolean showingSingleSession = false;
 
     @Nullable
     @Override
@@ -69,6 +72,9 @@ public class WorkoutDetailFragment extends Fragment {
             long wid = args.getLong("workoutId", -1L);
             if (wid > 0) {
                 repo.getWorkoutLiveById(wid).observe(getViewLifecycleOwner(), workout -> {
+                    // If we're showing a single session, prefer that display and
+                    // don't overwrite with the workout summary.
+                    if (showingSingleSession) return;
                     if (workout != null) {
                         tvStatus.setText("Completed");
                         tvBpm.setText("-- bpm");
@@ -84,11 +90,34 @@ public class WorkoutDetailFragment extends Fragment {
                         rvWorkoutSessions.setVisibility(View.GONE);
                         return;
                     }
+
+                    if (sessions.size() == 1) {
+                        // Show the single session inline for this workout
+                        com.team11.smartgym.data.Session s = sessions.get(0);
+                        int duration = (int) ((s.endedAt - s.startedAt) / 1000);
+                        String deviceName = (s.type == null || s.type.isEmpty()) ? "Other" : s.type;
+
+                        showingSingleSession = true;
+                        tvStatus.setText(deviceName);
+                        tvBpm.setText(s.avgBpm + " bpm");
+                        tvAvgBpm.setText("Average: " + s.avgBpm + " bpm");
+                        tvMaxBpm.setText("Max: " + s.maxBpm + " bpm");
+                        java.text.DateFormat df = java.text.DateFormat.getDateTimeInstance();
+                        tvWorkoutStarted.setText(df.format(new java.util.Date(s.startedAt)));
+                        tvTimer.setText(formatDuration(duration));
+
+                        rvWorkoutSessions.setVisibility(View.GONE);
+                        return;
+                    }
+
+                    // Not a single-session workout; render the sessions list.
+                    showingSingleSession = false;
                     List<com.team11.smartgym.model.WorkoutSession> list = new ArrayList<>();
                     for (com.team11.smartgym.data.Session s : sessions) {
                         int duration = (int) ((s.endedAt - s.startedAt) / 1000);
+                        String deviceName = (s.type == null || s.type.isEmpty()) ? "Other" : s.type;
                         list.add(new com.team11.smartgym.model.WorkoutSession(
-                                s.id, "Workout", s.startedAt, s.endedAt, s.avgBpm, s.maxBpm, duration
+                                s.id, deviceName, s.startedAt, s.endedAt, s.avgBpm, s.maxBpm, duration
                         ));
                     }
                     sessionsAdapter.submitList(list);
@@ -98,5 +127,16 @@ public class WorkoutDetailFragment extends Fragment {
         }
 
         return v;
+    }
+
+    private String formatDuration(int seconds) {
+        if (seconds < 0) seconds = 0;
+        int h = seconds / 3600;
+        int m = (seconds % 3600) / 60;
+        int s = seconds % 60;
+        if (h > 0) {
+            return String.format("%d:%02d:%02d", h, m, s);
+        }
+        return String.format("%02d:%02d", m, s);
     }
 }

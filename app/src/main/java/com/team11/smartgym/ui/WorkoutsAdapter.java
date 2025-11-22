@@ -47,7 +47,13 @@ public class WorkoutsAdapter extends RecyclerView.Adapter<WorkoutsAdapter.Workou
 
         h.tvDate.setText(date);
         h.tvTime.setText(time);
-        h.tvDevice.setText("Workout");
+        // For single-session workouts prefer showing the session's activity type;
+        // otherwise label the row as a Workout group.
+        if (w.sessionCount == 1 && w.singleSessionType != null && !w.singleSessionType.isEmpty()) {
+            h.tvDevice.setText(w.singleSessionType);
+        } else {
+            h.tvDevice.setText("Workout");
+        }
         int avg = w.avgBpm;
         int max = w.maxBpm;
         h.tvAvgHr.setText(String.format(Locale.getDefault(), "%d bpm", avg));
@@ -61,7 +67,11 @@ public class WorkoutsAdapter extends RecyclerView.Adapter<WorkoutsAdapter.Workou
         } else {
             h.tvDuration.setText("--:--");
         }
-        h.tvSummary.setText(String.format(Locale.getDefault(), "%d sessions", w.sessionCount));
+        if (w.sessionCount == 1) {
+            h.tvSummary.setText("session");
+        } else {
+            h.tvSummary.setText(String.format(Locale.getDefault(), "%d sessions", w.sessionCount));
+        }
 
         h.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onItemClick(w);

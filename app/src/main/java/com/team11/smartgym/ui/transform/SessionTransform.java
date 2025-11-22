@@ -12,7 +12,8 @@ public class SessionTransform {
         List<WorkoutSession> out = new ArrayList<>();
         for (Session s : sessions) {
             int duration = (int) ((s.endedAt - s.startedAt) / 1000);
-            out.add(new WorkoutSession(s.id, "Workout", s.startedAt, s.endedAt, s.avgBpm, s.maxBpm, duration));
+            String type = (s.type == null || s.type.isEmpty()) ? "Other" : s.type;
+            out.add(new WorkoutSession(s.id, type, s.startedAt, s.endedAt, s.avgBpm, s.maxBpm, duration));
         }
         return out;
     }
