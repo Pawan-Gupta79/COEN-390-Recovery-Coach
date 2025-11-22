@@ -1,28 +1,35 @@
 package com.team11.smartgym.ui;
 
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 
+import com.github.mikephil.charting.charts.BarChart;
+import com.github.mikephil.charting.components.XAxis;
+import com.github.mikephil.charting.data.BarData;
+import com.github.mikephil.charting.data.BarDataSet;
+import com.github.mikephil.charting.data.BarEntry;
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter;
 import com.team11.smartgym.R;
 import com.team11.smartgym.data.DatabaseProvider;
 import com.team11.smartgym.data.Session;
 import com.team11.smartgym.data.SessionRepository;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 public class OverviewFragment extends Fragment {
 
@@ -51,40 +58,82 @@ public class OverviewFragment extends Fragment {
             navController.navigateUp();
         });
 
-        LinearLayout clickableTitle1 = view.findViewById(R.id.clickable_title_1);
-        LinearLayout clickableTitle2 = view.findViewById(R.id.clickable_title_2);
-        LinearLayout clickableTitle3 = view.findViewById(R.id.clickable_title_3);
-
-        TextView tvAvgHeartRate = view.findViewById(R.id.tv_avg_heart_rate);
+        TextView avgHr3Sessions = view.findViewById(R.id.avg_hr_3_sessions);
+        TextView avgDuration3Sessions = view.findViewById(R.id.avg_duration_3_sessions);
+        TextView avgHr5Sessions = view.findViewById(R.id.avg_hr_5_sessions);
+        TextView avgDuration5Sessions = view.findViewById(R.id.avg_duration_5_sessions);
+        TextView avgHr10Sessions = view.findViewById(R.id.avg_hr_10_sessions);
+        TextView avgDuration10Sessions = view.findViewById(R.id.avg_duration_10_sessions);
+        BarChart barChart = view.findViewById(R.id.bar_chart);
 
         SessionRepository repo = DatabaseProvider.get(requireContext()).getSessionRepository();
         repo.getAllSessions().observe(getViewLifecycleOwner(), sessions -> {
             if (sessions != null && !sessions.isEmpty()) {
-                int totalBpm = 0;
-                int sessionCount = 0;
-                for (Session session : sessions) {
-                    if (session.avgBpm > 0) {
-                        totalBpm += session.avgBpm;
-                        sessionCount++;
-                    }
-                }
-                if (sessionCount > 0) {
-                    tvAvgHeartRate.setText(String.valueOf(totalBpm / sessionCount));
-                }
+                updateSessionStats(sessions, 3, avgHr3Sessions, avgDuration3Sessions);
+                updateSessionStats(sessions, 5, avgHr5Sessions, avgDuration5Sessions);
+                updateSessionStats(sessions, 10, avgHr10Sessions, avgDuration10Sessions);
+                setupBarChart(barChart, sessions);
             }
         });
+    }
 
-        clickableTitle1.setOnClickListener(v -> {
-            Toast.makeText(getContext(), "First item clicked", Toast.LENGTH_SHORT).show();
-        });
+    private void updateSessionStats(List<Session> sessions, int count, TextView avgHrView, TextView avgDurationView) {
+        int totalBpm = 0;
+        long totalDuration = 0;
 
-        clickableTitle2.setOnClickListener(v -> {
-            Toast.makeText(getContext(), "Second item clicked", Toast.LENGTH_SHORT).show();
-        });
+        int numberOfSessions = Math.min(sessions.size(), count);
+        if (numberOfSessions == 0) return;
 
-        clickableTitle3.setOnClickListener(v -> {
-            Toast.makeText(getContext(), "Third item clicked", Toast.LENGTH_SHORT).show();
-        });
+        int startIndex = sessions.size() - numberOfSessions;
+        for (int i = startIndex; i < sessions.size(); i++) {
+            Session session = sessions.get(i);
+            totalBpm += session.avgBpm;
+            totalDuration += (session.endedAt - session.startedAt);
+        }
+
+        avgHrView.setText(String.format(Locale.getDefault(), "Avg HR: %d", totalBpm / numberOfSessions));
+        long avgDurationMillis = totalDuration / numberOfSessions;
+        String formattedDuration = String.format(Locale.getDefault(), "%02d:%02d:%02d",
+                TimeUnit.MILLISECONDS.toHours(avgDurationMillis),
+                TimeUnit.MILLISECONDS.toMinutes(avgDurationMillis) % TimeUnit.HOURS.toMinutes(1),
+                TimeUnit.MILLISECONDS.toSeconds(avgDurationMillis) % TimeUnit.MINUTES.toSeconds(1));
+        avgDurationView.setText(String.format(Locale.getDefault(), "Avg Duration: %s", formattedDuration));
+    }
+
+    private void setupBarChart(BarChart barChart, List<Session> sessions) {
+        ArrayList<BarEntry> entries = new ArrayList<>();
+        ArrayList<String> labels = new ArrayList<>();
+
+        int numberOfSessions = Math.min(sessions.size(), 5);
+        int startIndex = sessions.size() - numberOfSessions;
+
+        for (int i = 0; i < numberOfSessions; i++) {
+            Session session = sessions.get(startIndex + i);
+            entries.add(new BarEntry(i, session.avgBpm));
+            labels.add(String.valueOf(i + 1)); // Corrected Labeling
+        }
+
+        BarDataSet dataSet = new BarDataSet(entries, "Average Heart Rate");
+        dataSet.setColor(Color.BLUE);
+
+        BarData barData = new BarData(dataSet);
+        barData.setBarWidth(0.9f);
+        barChart.setData(barData);
+
+        XAxis xAxis = barChart.getXAxis();
+        xAxis.setPosition(XAxis.XAxisPosition.BOTTOM);
+        xAxis.setValueFormatter(new IndexAxisValueFormatter(labels));
+        xAxis.setGranularity(1f);
+        xAxis.setGranularityEnabled(true);
+        xAxis.setDrawGridLines(false);
+
+        barChart.getDescription().setEnabled(false);
+        barChart.getAxisRight().setEnabled(false);
+        barChart.getLegend().setEnabled(false);
+        barChart.setTouchEnabled(false);
+
+        barChart.setFitBars(true);
+        barChart.invalidate();
     }
 
     @Override
