@@ -14,5 +14,7 @@ public class Workout {
     public int avgBpm;
     public int maxBpm;
     public String note; // optional
+    // Owning user id for this workout (nullable)
+    public Integer userId;
 
 }

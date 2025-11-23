@@ -28,7 +28,7 @@ public final class DatabaseProvider {
         // single-threaded executor for all DB writes to keep ordering predictable
         dbExecutor = Executors.newSingleThreadExecutor();
 
-        sessionRepo = new SessionRepository(db.sessionDao());
+        sessionRepo = new SessionRepository(db.sessionDao(), appContext);
         sessionController = new SessionController(sessionRepo, dbExecutor);
     }
 
