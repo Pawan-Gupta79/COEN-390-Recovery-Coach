@@ -16,4 +16,10 @@ public class Session {
 
     public int avgBpm;
     public int maxBpm;
+    // Link to Workout; nullable when session is standalone
+    public Long workoutId;
+    // The owning user id (nullable for legacy rows)
+    public Integer userId;
+    // Activity type for this session (e.g. Run, Jog, Cycling). Nullable; fallback to "Other" in UI.
+    public String type;
 }

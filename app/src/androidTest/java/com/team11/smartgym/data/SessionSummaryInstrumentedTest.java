@@ -32,7 +32,7 @@ public class SessionSummaryInstrumentedTest {
                 .allowMainThreadQueries()
                 .build();
         sessionDao = db.sessionDao();
-        repo = new SessionRepository(sessionDao);
+        repo = new SessionRepository(sessionDao, ctx);
     }
 
     @After

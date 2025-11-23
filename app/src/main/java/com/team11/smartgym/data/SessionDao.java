@@ -38,6 +38,50 @@ public interface SessionDao {
     @Query("SELECT * FROM `Session` ORDER BY startedAt DESC")
     LiveData<List<Session>> getAllSessionsLive();
 
+    // ------- Workout CRUD (workout groups sessions) -------
+    @Insert
+    long insertWorkout(Workout w);
+
+    @Update
+    void updateWorkout(Workout w);
+
+    @Query("SELECT * FROM `Workout` WHERE userId = :userId ORDER BY startedAt DESC")
+    LiveData<List<Workout>> getAllWorkoutsLive(int userId);
+
+    @Query("SELECT * FROM `Workout` WHERE id = :id LIMIT 1")
+    androidx.lifecycle.LiveData<Workout> getWorkoutLiveById(long id);
+
+    @Query("SELECT * FROM `Session` WHERE workoutId = :workoutId ORDER BY startedAt ASC")
+    List<Session> listSessionsForWorkout(long workoutId);
+
+    @Query("SELECT * FROM `Session` WHERE workoutId = :workoutId ORDER BY startedAt ASC")
+    LiveData<List<Session>> getSessionsForWorkoutLive(long workoutId);
+
+    @Query("SELECT w.id AS id, w.startedAt AS startedAt, w.endedAt AS endedAt, w.avgBpm AS avgBpm, w.maxBpm AS maxBpm, w.note AS note, (SELECT COUNT(*) FROM `Session` s WHERE s.workoutId = w.id) AS sessionCount, (SELECT s.type FROM `Session` s WHERE s.workoutId = w.id LIMIT 1) AS singleSessionType FROM `Workout` w WHERE w.userId = :userId ORDER BY startedAt DESC")
+    LiveData<List<WorkoutSummary>> getAllWorkoutSummariesLive(int userId);
+
+    @Query("UPDATE `Workout` SET endedAt = :endedAt, avgBpm = :avg, maxBpm = :max WHERE id = :workoutId")
+    int finalizeWorkout(long workoutId, long endedAt, int avg, int max);
+
+    // Delete cascade helpers for discarding an unsaved workout
+    @Query("DELETE FROM `Reading` WHERE sessionId IN (SELECT id FROM `Session` WHERE workoutId = :workoutId)")
+    int deleteReadingsForWorkout(long workoutId);
+
+    @Query("DELETE FROM `Session` WHERE workoutId = :workoutId")
+    int deleteSessionsForWorkout(long workoutId);
+
+    @Query("DELETE FROM `Workout` WHERE id = :workoutId")
+    int deleteWorkoutById(long workoutId);
+
+    // Note: activity `type` is stored per-Session (session.type), not on Workout.
+
+    @androidx.room.Transaction
+    default void deleteWorkoutCascade(long workoutId) {
+        deleteReadingsForWorkout(workoutId);
+        deleteSessionsForWorkout(workoutId);
+        deleteWorkoutById(workoutId);
+    }
+
     // ------- Reading CRUD -------
     @Insert
     void insertReading(Reading r);

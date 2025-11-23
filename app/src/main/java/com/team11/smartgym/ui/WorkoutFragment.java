@@ -19,11 +19,14 @@ import com.team11.smartgym.R;
 // DatabaseProvider already imported above
 import com.team11.smartgym.data.Reading;
 import com.team11.smartgym.data.SessionRepository;
+import androidx.activity.OnBackPressedCallback;
+import androidx.appcompat.app.AlertDialog;
 
 import java.util.Locale;
 import java.util.ArrayList;
 import java.util.List;
 import com.team11.smartgym.data.DatabaseProvider;
+import androidx.navigation.fragment.NavHostFragment;
 
 public class WorkoutFragment extends Fragment {
 
@@ -40,9 +43,12 @@ public class WorkoutFragment extends Fragment {
     private TextView tvBpm;
     private TextView tvAvgBpm;
     private TextView tvMaxBpm;
+    private TextView tvWorkoutStarted;
     private Button btnPause;
     private Button btnCancel;
     private Button btnEnd;
+    private androidx.recyclerview.widget.RecyclerView rvWorkoutSessions;
+    private SessionsAdapter sessionsAdapter;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
     private int state = STATE_IDLE;
@@ -54,7 +60,7 @@ public class WorkoutFragment extends Fragment {
     private int countdown = 0;
     private static final int START_COUNTDOWN_SECONDS = 5;
 
-    private String selectedActivity = "Workout";
+    private String selectedActivity = "Other";
     private long startedAtFromArgs = 0L;
     private final StringBuilder activityBpm = new StringBuilder();
 
@@ -81,6 +87,7 @@ public class WorkoutFragment extends Fragment {
             handler.postDelayed(this, 10);
         }
     };
+    
 
     private final Runnable countdownRunnable = new Runnable() {
         @Override
@@ -110,9 +117,11 @@ public class WorkoutFragment extends Fragment {
         tvBpm    = v.findViewById(R.id.tvBpm);
         tvAvgBpm = v.findViewById(R.id.tvAvgBpm);
         tvMaxBpm = v.findViewById(R.id.tvMaxBpm);
+        tvWorkoutStarted = v.findViewById(R.id.tvWorkoutStarted);
         btnPause = v.findViewById(R.id.btnPause);
         btnCancel = v.findViewById(R.id.btnCancel);
         btnEnd = v.findViewById(R.id.btnEnd);
+        btnCancel.setText(R.string.end_workout);
 
         vm = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
 
@@ -130,16 +139,60 @@ public class WorkoutFragment extends Fragment {
         loadWorkoutInfo();
         resetUI();
 
+        // If a workout already exists (controller has current workout id) and we're idle,
+        // allow the user to End the workout (save/discard).
+        try {
+            if (dbProvider != null && dbProvider.getSessionController().getCurrentWorkoutId() != null) {
+                btnCancel.setEnabled(true);
+            }
+        } catch (Exception ignored) {}
+
+        // setup sessions list (hidden by default)
+        rvWorkoutSessions = v.findViewById(R.id.rvWorkoutSessions);
+        sessionsAdapter = new SessionsAdapter();
+        rvWorkoutSessions.setLayoutManager(new androidx.recyclerview.widget.LinearLayoutManager(requireContext()));
+        rvWorkoutSessions.setAdapter(sessionsAdapter);
+        rvWorkoutSessions.addItemDecoration(new androidx.recyclerview.widget.DividerItemDecoration(requireContext(), androidx.recyclerview.widget.DividerItemDecoration.VERTICAL));
+
         btnPause.setOnClickListener(view -> {
             if (state == STATE_IDLE) {
-                startCountdown();
+                showActivityChooserAndStart();
             } else {
                 togglePauseResume();
             }
         });
 
-        btnCancel.setOnClickListener(view -> confirmCancel());
-        btnEnd.setOnClickListener(view -> confirmStop());
+        // btnCancel (End Workout) opens the workout-level dialog; btnEnd ends the current activity only
+        btnCancel.setOnClickListener(view -> confirmEndWorkout());
+        btnEnd.setOnClickListener(view -> confirmEndActivity());
+
+        // Intercept back presses: if a workout exists or session active, prompt save/discard; otherwise allow back
+        requireActivity().getOnBackPressedDispatcher().addCallback(getViewLifecycleOwner(), new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                boolean hasWorkout = false;
+                try {
+                    if (dbProvider != null && dbProvider.getSessionController().getCurrentWorkoutId() != null) hasWorkout = true;
+                } catch (Exception ignored) {}
+
+                if (state != STATE_IDLE) {
+                    // There is an active activity/session: block back navigation.
+                    // Ask the user to finish the activity first instead of prompting a dialog.
+                    try {
+                        Snackbar.make(requireView(), "Please end the activity before leaving.", Snackbar.LENGTH_SHORT).show();
+                    } catch (Exception ignored) {}
+                    return;
+                } else if (hasWorkout) {
+                    // no active session but a workout exists: prompt to end/keep or discard workout
+                    confirmEndWorkout();
+                } else {
+                    // allow normal back
+                    setEnabled(false);
+                    requireActivity().onBackPressed();
+                    setEnabled(true);
+                }
+            }
+        });
 
         if (savedInstanceState != null) {
             restoreState(savedInstanceState);
@@ -150,16 +203,65 @@ public class WorkoutFragment extends Fragment {
 
     private void loadWorkoutInfo() {
         Bundle args = getArguments();
-        if (args != null) {
-            String deviceName = args.getString(ARG_DEVICE_NAME, "");
-            startedAtFromArgs = args.getLong(ARG_STARTED_AT, 0L);
-            selectedActivity = (deviceName == null || deviceName.isEmpty())
-                    ? "Workout"
-                    : deviceName + " Workout";
+        if (args != null && args.containsKey("workoutId")) {
+            // View-only mode for an existing workout
+            long wid = args.getLong("workoutId", -1L);
+            if (wid > 0 && repo != null) {
+                // disable controls
+                btnPause.setEnabled(false);
+                btnCancel.setEnabled(false);
+                btnEnd.setEnabled(false);
+
+                // observe workout meta
+                repo.getWorkoutLiveById(wid).observe(getViewLifecycleOwner(), workout -> {
+                    if (workout != null) {
+                            // Workout is a group; activity types are stored per-session.
+                            tvStatus.setText("Completed");
+                            tvBpm.setText("-- bpm");
+                            tvAvgBpm.setText("Average: " + workout.avgBpm + " bpm");
+                            tvMaxBpm.setText("Max: " + workout.maxBpm + " bpm");
+                            java.text.DateFormat df = java.text.DateFormat.getDateTimeInstance();
+                            tvWorkoutStarted.setText(df.format(new java.util.Date(workout.startedAt)));
+                        }
+                });
+
+                // observe sessions and populate the recycler view
+                repo.getSessionsForWorkoutLive(wid).observe(getViewLifecycleOwner(), sessions -> {
+                    if (sessions == null || sessions.isEmpty()) {
+                        rvWorkoutSessions.setVisibility(View.GONE);
+                        return;
+                    }
+                    // map DB Session -> UI WorkoutSession model
+                    java.util.List<com.team11.smartgym.model.WorkoutSession> list = new java.util.ArrayList<>();
+                    for (com.team11.smartgym.data.Session s : sessions) {
+                        int duration = (int) ((s.endedAt - s.startedAt) / 1000);
+                        // use the session's activity type
+                        String deviceName = (s.type == null || s.type.isEmpty()) ? "Other" : s.type;
+                        com.team11.smartgym.model.WorkoutSession ws = new com.team11.smartgym.model.WorkoutSession(
+                            s.id,
+                            deviceName,
+                            s.startedAt,
+                            s.endedAt,
+                            s.avgBpm,
+                            s.maxBpm,
+                            duration
+                        );
+                        list.add(ws);
+                    }
+                    sessionsAdapter.submitList(list);
+                    rvWorkoutSessions.setVisibility(View.VISIBLE);
+                });
+            }
         } else {
-            selectedActivity = "Workout";
+            String deviceName = args == null ? "" : args.getString(ARG_DEVICE_NAME, "");
+            startedAtFromArgs = args == null ? 0L : args.getLong(ARG_STARTED_AT, 0L);
+            selectedActivity = (deviceName == null || deviceName.isEmpty())
+                    ? "Other"
+                    : deviceName + " Workout";
+            tvStatus.setText("Idle");
+
+            // no workout-level activity type; sessions carry activity types
         }
-        tvStatus.setText("Idle");
     }
 
     private void startCountdown() {
@@ -168,9 +270,39 @@ public class WorkoutFragment extends Fragment {
         tvTimer.setText(String.valueOf(countdown));
         tvStatus.setText("Starting " + selectedActivity);
         btnPause.setText("Pause Start");
-        btnCancel.setEnabled(true);
+        // End Workout should not be available while starting
+        btnCancel.setEnabled(false);
         btnEnd.setEnabled(false);
         handler.postDelayed(countdownRunnable, 1000);
+    }
+
+    private void showActivityChooserAndStart() {
+        final String[] items = new String[]{"Run", "Jog", "Cycling", "Yoga", "Weightlifting", "Other"};
+        AlertDialog.Builder b = new AlertDialog.Builder(requireContext());
+        b.setTitle("Choose activity");
+        b.setItems(items, (dialog, which) -> {
+            selectedActivity = items[which];
+            tvStatus.setText("Selected: " + selectedActivity);
+            // persist activity type on workout row if one exists
+            if (dbProvider != null) {
+                try {
+                    Long wid = null;
+                    try { wid = dbProvider.getSessionController().getCurrentWorkoutId(); } catch (Exception ignored) {}
+                    if (wid == null) {
+                        // no workout exists yet: create one synchronously so we can persist the type
+                        try {
+                            long newWid = dbProvider.getSessionController().startWorkoutSync(System.currentTimeMillis());
+                            if (newWid > 0) wid = newWid;
+                        } catch (Exception ignored) {}
+                    }
+
+                    // no longer persisting activity type on the Workout; type is stored on each Session when saved
+                } catch (Exception ignored) {}
+            }
+            startCountdown();
+        });
+        b.setNegativeButton("Cancel", null);
+        b.show();
     }
 
     private void startMainTimer() {
@@ -220,7 +352,8 @@ public class WorkoutFragment extends Fragment {
             btnPause.setText("Resume Workout");
             tvStatus.setText(selectedActivity + " Paused");
             btnEnd.setEnabled(true);
-            btnCancel.setEnabled(true);
+            // End Workout only allowed when there's no ongoing activity (not while paused)
+            btnCancel.setEnabled(false);
 
             long elapsedSec = pauseOffset / 1000;
             activityBpm.append("pause").append(elapsedSec).append(",");
@@ -229,10 +362,10 @@ public class WorkoutFragment extends Fragment {
             startTime = System.currentTimeMillis();
             handler.post(timerRunnable);
 
-            btnPause.setText("Pause Workout");
-            tvStatus.setText(selectedActivity + " Ongoing");
-            btnEnd.setEnabled(false);
-            btnCancel.setEnabled(false);
+                btnPause.setText("Pause Workout");
+                tvStatus.setText(selectedActivity + " Ongoing");
+                btnEnd.setEnabled(false);
+                btnCancel.setEnabled(false);
         }
     }
 
@@ -249,27 +382,72 @@ public class WorkoutFragment extends Fragment {
             final long finalEnd = endTime;
             final int totalSec = (int) totalElapsedSec;
             final List<Reading> toSave = new ArrayList<>(pendingReadings);
+            final String finalSelectedActivity = selectedActivity;
 
             if (dbProvider != null) {
                 dbProvider.getDbExecutor().execute(() -> {
-                try {
-                    long sessionId = repo.createSession(finalStart);
+                    try {
+                        Long wid = null;
+                        try {
+                            wid = dbProvider.getSessionController().getCurrentWorkoutId();
+                        } catch (Exception ignored) {}
 
-                    for (Reading rr : toSave) {
-                        rr.sessionId = sessionId;
-                        repo.insertReading(rr);
+                        long sessionId = repo.createSession(finalStart, wid, finalSelectedActivity);
+
+                        for (Reading rr : toSave) {
+                            rr.sessionId = sessionId;
+                            repo.insertReading(rr);
+                        }
+
+                        repo.finalizeSession(sessionId, avgBpm, finalMax, finalEnd);
+
+                        // Recompute workout summary so the Workout row shows up-to-date avg/max/duration.
+                        try {
+                            if (dbProvider != null && wid != null) {
+                                // we're already running on the DB executor, so call the sync variant
+                                dbProvider.getSessionController().recomputeWorkoutSummarySync(wid);
+                            }
+                        } catch (Exception ignored) {}
+
+                        // Keep the workout active so the user can start another session within it.
+                        pendingReadings.clear();
+
+                        handler.post(() -> {
+                            Snackbar.make(requireView(),
+                                    "Saved: " + totalSec + " sec | Avg HR: " + avgBpm + " | Max HR: " + finalMax,
+                                    Snackbar.LENGTH_LONG).show();
+                            try {
+                                // If a workout is active, allow starting a new session (re-enable start button).
+                                boolean workoutActive = false;
+                                try {
+                                    if (dbProvider != null && dbProvider.getSessionController().getCurrentWorkoutId() != null) {
+                                        workoutActive = true;
+                                    }
+                                } catch (Exception ignored) {}
+
+                                if (workoutActive) {
+                                    tvStatus.setText("Saved");
+                                    btnPause.setEnabled(true);
+                                    btnPause.setText("Start Activity");
+                                    btnEnd.setEnabled(false);
+                                    // enable End Workout only when idle and workout exists
+                                    btnCancel.setEnabled(true);
+                                } else {
+                                    // no active workout: show read-only saved state
+                                    tvStatus.setText("Completed");
+                                    btnPause.setEnabled(false);
+                                    btnPause.setText("Start Activity");
+                                    btnEnd.setEnabled(false);
+                                    btnCancel.setEnabled(false);
+                                }
+
+                                // ensure sessions list is visible when saved
+                                if (rvWorkoutSessions != null) rvWorkoutSessions.setVisibility(View.VISIBLE);
+                            } catch (Exception ignored) {}
+                        });
+                    } catch (Exception e) {
+                        handler.post(() -> Snackbar.make(requireView(), "Failed to save workout: " + e.getMessage(), Snackbar.LENGTH_LONG).show());
                     }
-
-                    repo.finalizeSession(sessionId, avgBpm, finalMax, finalEnd);
-
-                    pendingReadings.clear();
-
-                    handler.post(() -> Snackbar.make(requireView(),
-                            "Saved: " + totalSec + " sec | Avg HR: " + avgBpm + " | Max HR: " + finalMax,
-                            Snackbar.LENGTH_LONG).show());
-                } catch (Exception e) {
-                    handler.post(() -> Snackbar.make(requireView(), "Failed to save workout: " + e.getMessage(), Snackbar.LENGTH_LONG).show());
-                }
                 });
             } else {
                 handler.post(() -> Snackbar.make(requireView(), "Failed to save workout: database unavailable", Snackbar.LENGTH_LONG).show());
@@ -278,27 +456,115 @@ public class WorkoutFragment extends Fragment {
             Snackbar.make(requireView(), "Can't save: database unavailable", Snackbar.LENGTH_LONG).show();
         }
 
+
+        // When stopping an activity (save==false) we discard only the current session's in-memory readings
+        // and do NOT delete the enclosing workout. Workout deletion is handled by the End Workout flow.
         liveSessionId = -1;
-        resetUI();
+        if (!save) {
+            // If a workout still exists, keep the workout active and allow the user to End Workout.
+            boolean workoutActive = false;
+            try {
+                if (dbProvider != null && dbProvider.getSessionController().getCurrentWorkoutId() != null) {
+                    workoutActive = true;
+                }
+            } catch (Exception ignored) {}
+
+            if (workoutActive) {
+                handler.post(() -> {
+                    try {
+                        // update state to idle (activity ended) but keep workout active
+                        state = STATE_IDLE;
+                        // stop outstanding runnables and reset timer display
+                        handler.removeCallbacks(timerRunnable);
+                        handler.removeCallbacks(countdownRunnable);
+                        tvTimer.setText("00:00.00");
+                        pauseOffset = 0L;
+                        startTime = 0L;
+                        pauseStartTime = 0L;
+                        activityBpm.setLength(0);
+                        maxBpm = 0;
+                        bpmSum = 0;
+                        bpmCount = 0;
+                        if (tvAvgBpm != null) tvAvgBpm.setText("Average: --");
+                        if (tvMaxBpm != null) tvMaxBpm.setText("Max: --");
+
+                        tvStatus.setText("Saved");
+                        btnPause.setEnabled(true);
+                        btnPause.setText("Start Activity");
+                        btnEnd.setEnabled(false);
+                        btnCancel.setEnabled(true); // enable End Workout
+                        if (rvWorkoutSessions != null) rvWorkoutSessions.setVisibility(View.VISIBLE);
+                    } catch (Exception ignored) {}
+                });
+            } else {
+                // no active workout: full reset
+                resetUI();
+            }
+        } else {
+            resetUI();
+        }
     }
 
-    private void confirmStop() {
+    private void confirmEndActivity() {
+        // Prevent saving an empty activity (no readings collected)
+        if (pendingReadings == null || pendingReadings.isEmpty() || bpmCount == 0) {
+            try {
+                Snackbar.make(requireView(), "No activity data to save", Snackbar.LENGTH_SHORT).show();
+            } catch (Exception ignored) {}
+            return;
+        }
+
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setTitle("End Workout")
-                .setMessage("Do you want to save this workout?")
+                .setTitle("End Activity")
+                .setMessage("Do you want to save this activity?")
                 .setPositiveButton("Save", (dialog, which) -> stopTimer(true))
                 .setNegativeButton("Discard", (dialog, which) -> stopTimer(false))
                 .setNeutralButton("Cancel", null)
                 .show();
     }
 
-    private void confirmCancel() {
+    private void confirmEndWorkout() {
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
-                .setTitle("Cancel Activity")
-                .setMessage("Are you sure you want to cancel this workout?")
-                .setPositiveButton("Yes", (dialog, which) -> resetUI())
-                .setNegativeButton("No", null)
+                .setTitle("End Workout")
+                .setMessage("Do you want to finalize and keep this workout, or discard the entire workout and its sessions?")
+                .setPositiveButton("Finalize", (dialog, which) -> endWorkoutFlow(true))
+                .setNegativeButton("Discard Workout", (dialog, which) -> endWorkoutFlow(false))
+                .setNeutralButton("Cancel", null)
                 .show();
+    }
+
+    private void endWorkoutFlow(boolean finalize) {
+        if (dbProvider == null || repo == null) {
+            handler.post(() -> Snackbar.make(requireView(), "Database unavailable", Snackbar.LENGTH_SHORT).show());
+            return;
+        }
+        dbProvider.getDbExecutor().execute(() -> {
+            try {
+                Long wid = null;
+                try { wid = dbProvider.getSessionController().getCurrentWorkoutId(); } catch (Exception ignored) {}
+                if (wid == null) {
+                    handler.post(() -> Snackbar.make(requireView(), "No active workout to end.", Snackbar.LENGTH_SHORT).show());
+                    return;
+                }
+
+                if (finalize) {
+                    // Compute and persist workout summary and clear currentWorkoutId
+                    try { dbProvider.getSessionController().endWorkout(System.currentTimeMillis()); } catch (Exception ignored) {}
+                    handler.post(() -> {
+                        try { Snackbar.make(requireView(), "Workout finalized", Snackbar.LENGTH_SHORT).show(); } catch (Exception ignored) {}
+                        try { NavHostFragment.findNavController(WorkoutFragment.this).popBackStack(); } catch (Exception ignored) {}
+                    });
+                } else {
+                    // Discard entire workout (sessions + readings + workout row)
+                    try { repo.deleteWorkoutCascade(wid); } catch (Exception ignored) {}
+                    try { dbProvider.getSessionController().cancelWorkout(wid); } catch (Exception ignored) {}
+                    handler.post(() -> {
+                        try { Snackbar.make(requireView(), "Workout discarded", Snackbar.LENGTH_SHORT).show(); } catch (Exception ignored) {}
+                        try { NavHostFragment.findNavController(WorkoutFragment.this).popBackStack(); } catch (Exception ignored) {}
+                    });
+                }
+            } catch (Exception ignored) {}
+        });
     }
 
     private void resetUI() {
@@ -392,7 +658,7 @@ public class WorkoutFragment extends Fragment {
         outState.putInt("state", state);
         outState.putLong("startTime", startTime);
         outState.putLong("pauseOffset", pauseOffset);
-        outState.putString("Workout", selectedActivity);
+        outState.putString("activity", selectedActivity);
         outState.putString("bpmData", activityBpm.toString());
     }
 
@@ -400,7 +666,7 @@ public class WorkoutFragment extends Fragment {
         state = stateBundle.getInt("state", STATE_IDLE);
         startTime = stateBundle.getLong("startTime", 0L);
         pauseOffset = stateBundle.getLong("pauseOffset", 0L);
-        selectedActivity = stateBundle.getString("activity", "Workout");
+        selectedActivity = stateBundle.getString("activity", "Other");
         activityBpm.setLength(0);
         activityBpm.append(stateBundle.getString("bpmData", ""));
         updateUIState();
@@ -418,7 +684,8 @@ public class WorkoutFragment extends Fragment {
             case STATE_PAUSED:
                 tvStatus.setText(selectedActivity + " Paused");
                 btnPause.setText("Resume Activity");
-                btnCancel.setEnabled(true);
+                // Do not allow ending the workout while a session is paused
+                btnCancel.setEnabled(false);
                 btnEnd.setEnabled(true);
                 break;
             default:

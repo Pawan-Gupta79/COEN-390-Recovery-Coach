@@ -1,24 +1,33 @@
 package com.team11.smartgym.data;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+
 import androidx.lifecycle.LiveData;
 
 import java.util.List;
 
 /**
  * Thin repository around SessionDao.
- * (allowMainThreadQueries() is enabled in AppDb for Sprint dev)
- *
- * DS-06.x:
- *  - DS-06.1: createSession(...) is the entry point for starting a new session.
- *  - DS-06.2: readings are attached to a sessionId via insertReading(s)/HrSampleBuffer.
- *  - DS-06.3: finalizeSessionFromReadings(...) computes summary stats and updates Session.
+ * (allowMainThreadQueries() is enabled in DatabaseProvider for Sprint dev)
  */
 public class SessionRepository {
 
     private final SessionDao sessionDao;
+    private final Context appContext;
 
-    public SessionRepository(SessionDao dao) {
+    public SessionRepository(SessionDao dao, Context appContext) {
         this.sessionDao = dao;
+        this.appContext = appContext.getApplicationContext();
+    }
+
+    private int getCurrentUserId() {
+        try {
+            SharedPreferences prefs = appContext.getSharedPreferences("user_session", Context.MODE_PRIVATE);
+            return prefs.getInt("user_id", -1);
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     // ---------- Live list for UI ----------
@@ -26,30 +35,74 @@ public class SessionRepository {
         return sessionDao.getAllSessionsLive();
     }
 
-    // ---------- Session lifecycle ----------
+    // ---------- Workouts ----------
+    public LiveData<List<Workout>> getAllWorkoutsLive() {
+        int uid = getCurrentUserId();
+        return sessionDao.getAllWorkoutsLive(uid);
+    }
 
-    /**
-     * DS-06.1 - Create a new Session row and return its generated ID.
-     *
-     * The insert is atomic at the DB level via Room's @Insert.
-     *
-     * @param startMs epoch time in ms when the session starts
-     * @return generated session ID
-     */
+    public androidx.lifecycle.LiveData<Workout> getWorkoutLiveById(long id) {
+        return sessionDao.getWorkoutLiveById(id);
+    }
+
+    public LiveData<java.util.List<WorkoutSummary>> getAllWorkoutSummariesLive() {
+        int uid = getCurrentUserId();
+        return sessionDao.getAllWorkoutSummariesLive(uid);
+    }
+    // ---------- Session lifecycle ----------
     public long createSession(long startMs) {
+        return createSession(startMs, null, null);
+    }
+
+    /** Create a new Session row and optionally attach it to a workout. */
+    public long createSession(long startMs, Long workoutId, String type) {
         Session s = new Session();
         s.startedAt = startMs;
         s.endedAt = 0L;
         s.avgBpm = 0;
         s.maxBpm = 0;
+        s.workoutId = workoutId;
+        s.type = type;
+        s.userId = getCurrentUserId();
         return sessionDao.insertSession(s);
     }
 
-    /**
-     * DS-06.3 - Finalize a session given precomputed stats.
-     */
     public void finalizeSession(long sessionId, int avg, int max, long endedAt) {
         sessionDao.finalizeSummary(sessionId, endedAt, avg, max);
+    }
+
+    // ---------- Workout lifecycle ----------
+    public long createWorkout(long startMs) {
+        Workout w = new Workout();
+        w.startedAt = startMs;
+        w.endedAt = 0L;
+        w.avgBpm = 0;
+        w.maxBpm = 0;
+        // create workout with no per-workout activity type; activity type is stored per-Session
+        w.userId = getCurrentUserId();
+        return sessionDao.insertWorkout(w);
+    }
+
+    public void finalizeWorkout(long workoutId, long endedAt, int avg, int max) {
+        sessionDao.finalizeWorkout(workoutId, endedAt, avg, max);
+    }
+
+    // activity type is stored per-session; no updateWorkoutType
+
+    public void deleteWorkoutCascade(long workoutId) {
+        sessionDao.deleteWorkoutCascade(workoutId);
+    }
+
+    public java.util.List<Session> listSessionsForWorkout(long workoutId) {
+        return sessionDao.listSessionsForWorkout(workoutId);
+    }
+
+    public LiveData<List<Session>> getSessionsForWorkoutLive(long workoutId) {
+        return sessionDao.getSessionsForWorkoutLive(workoutId);
+    }
+
+    public Session getSessionById(long id) {
+        return sessionDao.getSessionById(id);
     }
 
     public void updateSession(Session s) {
@@ -57,55 +110,11 @@ public class SessionRepository {
     }
 
     // ---------- Readings ----------
-
     public void insertReading(Reading r) {
         sessionDao.insertReading(r);
     }
 
-    /**
-     * DS-06.2 - Batch insert readings for streaming HR data.
-     * Each Reading must already have its sessionId and timestamp set.
-     */
-    public void insertReadings(List<Reading> readings) {
-        sessionDao.insertReadings(readings);
-    }
-
     public List<Reading> getReadings(long sessionId) {
         return sessionDao.getReadingsForSession(sessionId);
-    }
-
-    // ---------- DS-06.3: summary from readings ----------
-
-    /**
-     * DS-06.3
-     * Compute avg / max BPM and endedAt from all Reading rows for this session,
-     * then update the Session row via finalizeSummary(...).
-     *
-     * endedAt is taken as the timestamp of the last Reading (chronological order).
-     * If there are no readings, endedAt falls back to System.currentTimeMillis()
-     * and avg/max are set to 0.
-     */
-    public void finalizeSessionFromReadings(long sessionId) {
-        List<Reading> readings = sessionDao.getReadingsForSession(sessionId);
-        if (readings == null || readings.isEmpty()) {
-            long now = System.currentTimeMillis();
-            sessionDao.finalizeSummary(sessionId, now, 0, 0);
-            return;
-        }
-
-        int sum = 0;
-        int max = Integer.MIN_VALUE;
-        long lastTs = readings.get(readings.size() - 1).timestamp;
-
-        for (Reading r : readings) {
-            sum += r.bpm;
-            if (r.bpm > max) {
-                max = r.bpm;
-            }
-        }
-
-        int avg = sum / readings.size();
-
-        sessionDao.finalizeSummary(sessionId, lastTs, avg, max);
     }
 }

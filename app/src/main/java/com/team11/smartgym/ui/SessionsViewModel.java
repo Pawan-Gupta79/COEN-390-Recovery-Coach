@@ -38,16 +38,17 @@ public class SessionsViewModel extends ViewModel {
                     int max = s.maxBpm;
                     int duration = (int) ((s.endedAt - s.startedAt) / 1000);
 
-                    list.add(new WorkoutSession(
+                        String label = (s.type != null && !s.type.isEmpty()) ? s.type : (s.deviceName != null ? s.deviceName : "HR Sensor");
+                        list.add(new WorkoutSession(
                             s.id,
-                            s.deviceName != null ? s.deviceName : "HR Sensor",
+                            label,
                             s.startedAt,
                             s.endedAt,
                             avg,
                             max,
                             duration,
                             "" // detailed HR string omitted to avoid extra DB access
-                    ));
+                        ));
                 }
             }
             return list;

@@ -39,6 +39,8 @@ import com.github.mikephil.charting.data.LineData;
 import com.github.mikephil.charting.data.LineDataSet;
 import com.google.android.material.snackbar.Snackbar;
 import com.team11.smartgym.ble.BleService;
+import com.team11.smartgym.ble.DeviceItem;
+import com.team11.smartgym.ble.DeviceListAdapter;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -67,6 +69,7 @@ import com.team11.smartgym.ble.DeviceItem;
 import com.team11.smartgym.ble.DeviceListAdapter;
 import com.team11.smartgym.data.AppPrefs;
 import com.team11.smartgym.data.SessionRepository;
+import com.team11.smartgym.data.DatabaseProvider;
 import com.team11.smartgym.model.ConnectionState;
 import com.team11.smartgym.shared.Bus;
 import com.team11.smartgym.ui.common.SnackbarUtil;
@@ -126,6 +129,7 @@ public class DashboardFragment extends Fragment {
                 }
 
 
+                // ---------------- CHANGED ----------------
                 // Map string state from BLE service to ConnectionState
                 if ("CONNECTED".equals(state)) {
                     vm.setState(ConnectionState.CONNECTED);
@@ -188,16 +192,15 @@ public class DashboardFragment extends Fragment {
         LineDataSet set = new LineDataSet(null, "Heart Rate");
         set.setLineWidth(2f);
         set.setDrawCircles(false);
-        LineData ldata = new LineData(set);
-        chart.setData(ldata);
+        LineData ds = new LineData(set);
+        chart.setData(ds);
         chart.invalidate();
 
         vm = new ViewModelProvider(requireActivity()).get(DashboardViewModel.class);
         prefs = new AppPrefs(requireContext());
 
-        setupChart();
-
         // Restore flags + last device
+
         vm.setAutoReconnectEnabled(prefs.isAutoReconnect());
         String lastName = prefs.getLastDeviceName();
         String lastAddr = prefs.getLastDeviceAddr();
@@ -377,10 +380,12 @@ public class DashboardFragment extends Fragment {
                 sampleIdx = 0;
                 // When turning off, keep current connection state; BPM will clear to "--"
                /* SnackbarUtil.show(requireView(), getString(R.string.fake_off));*/
+                SnackbarUtil.show(requireView(), getString(R.string.fake_off));
             }
         });
 
         // Start Workout
+        // Start Workout (guard)
         btnStartWorkout.setOnClickListener(vw -> {
             ConnectionState s = vm.getState().getValue();
             if (s != ConnectionState.CONNECTED) {
@@ -394,18 +399,28 @@ public class DashboardFragment extends Fragment {
 
             // DS-06.1: create Session row on Start and get its ID.
             SessionRepository sessionRepo =
-                    new SessionRepository(AppDb.get(requireContext()).sessionDao());
+                    new SessionRepository(
+                            AppDb.get(requireContext()).sessionDao(),
+                            requireContext()
+                    );
             long sessionId = sessionRepo.createSession(startedAt);
 
             Bundle args = new Bundle();
-            args.putString(WorkoutFragment.ARG_DEVICE_NAME,
-                    device == null ? "" : device);
             args.putLong(WorkoutFragment.ARG_STARTED_AT, startedAt);
             // Pass sessionId forward so WorkoutFragment can attach samples later (DS-06.2+).
             args.putLong("sessionId", sessionId);
 
-            NavHostFragment.findNavController(this)
-                    .navigate(R.id.action_dashboard_to_workout, args);
+                // Start workout lifecycle (persisted on background executor)
+                try {
+                    // create workout and wait for id so subsequent sessions attach reliably
+                    long wid = DatabaseProvider.get(requireContext()).getSessionController().startWorkoutSync(startedAt);
+                    if (wid > 0) {
+                        // store current workout id is already handled inside controller; optionally pass to fragment
+                    }
+                } catch (Exception ignored) {}
+
+                NavHostFragment.findNavController(this)
+                        .navigate(R.id.action_dashboard_to_workout, args);
         });
 
         if (vm.getState().getValue() == null) vm.setState(ConnectionState.DISCONNECTED);
@@ -853,12 +868,15 @@ public class DashboardFragment extends Fragment {
         if (data == null) return;
 
         LineDataSet ds = (LineDataSet) data.getDataSetByIndex(0);
+        if (ds == null) return;
+
+        ds.addEntry(new Entry(sampleIdx++, bpm));
+        while (ds.getEntryCount() > 60) ds.removeFirst();
         if (ds == null) {
             ds = new LineDataSet(null, "Heart Rate");
             data.addDataSet(ds);
         }
 
-        data.addEntry(new Entry(sampleIdx++, bpm), 0);
         data.notifyDataChanged();
         chart.notifyDataSetChanged();
         chart.moveViewToX(sampleIdx);
@@ -894,11 +912,7 @@ public class DashboardFragment extends Fragment {
         super.onPause();
         requireContext().unregisterReceiver(bus);
 
-        // DS-05: cancel any pending auto-reconnect when leaving Dashboard
-        requireContext().startService(
-                new Intent(requireContext(), BleService.class)
-                        .setAction(BleService.ACTION_CANCEL_RECONNECT)
-        );
+
     }
 }
 

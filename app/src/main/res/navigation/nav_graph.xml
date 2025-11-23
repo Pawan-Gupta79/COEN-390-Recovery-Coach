@@ -26,6 +26,12 @@
         <action
             android:id="@+id/action_sessions_to_snapshot"
             app:destination="@id/sessionsSnapshotFragment" />
+        <action
+            android:id="@+id/action_sessions_to_workout"
+            app:destination="@id/workoutSessionsFragment" />
+        <action
+            android:id="@+id/action_sessions_to_overview"
+            app:destination="@id/overviewFragment" />
     </fragment>
 
     <fragment
@@ -64,6 +70,16 @@
         android:label="@string/workout_title" />
 
     <fragment
+        android:id="@+id/workoutDetailFragment"
+        android:name="com.team11.smartgym.ui.WorkoutDetailFragment"
+        android:label="@string/workout_title" />
+
+    <fragment
+        android:id="@+id/workoutSessionsFragment"
+        android:name="com.team11.smartgym.ui.WorkoutSessionsFragment"
+        android:label="@string/workout_title" />
+
+    <fragment
         android:id="@+id/loginFragment"
         android:name="com.team11.smartgym.ui.LoginFragment"
         android:label="Login">
@@ -89,6 +105,11 @@
         android:id="@+id/createAccountFragment"
         android:name="com.team11.smartgym.ui.CreateAccountFragment"
         android:label="Create Account" />
+
+    <fragment
+        android:id="@+id/overviewFragment"
+        android:name="com.team11.smartgym.ui.OverviewFragment"
+        android:label="Overview" />
 
     <!-- NEW: Session Controls (start/stop, fake sample) -->
     <fragment
