@@ -6,6 +6,16 @@
     android:layout_height="match_parent">
 
     <!-- Device name -->
+    <!-- Screen title -->
+    <TextView
+        android:id="@+id/tvWorkoutTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/workout_title"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:paddingBottom="8dp" />
+
     <TextView
         android:id="@+id/tvWorkoutDevice"
         android:layout_width="wrap_content"

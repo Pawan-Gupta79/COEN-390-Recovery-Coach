@@ -35,17 +35,18 @@ public class SessionRepository {
     }
     // ---------- Session lifecycle ----------
     public long createSession(long startMs) {
-        return createSession(startMs, null);
+        return createSession(startMs, null, null);
     }
 
     /** Create a new Session row and optionally attach it to a workout. */
-    public long createSession(long startMs, Long workoutId) {
+    public long createSession(long startMs, Long workoutId, String type) {
         Session s = new Session();
         s.startedAt = startMs;
         s.endedAt = 0L;
         s.avgBpm = 0;
         s.maxBpm = 0;
         s.workoutId = workoutId;
+        s.type = type;
         return sessionDao.insertSession(s);
     }
 
@@ -60,11 +61,18 @@ public class SessionRepository {
         w.endedAt = 0L;
         w.avgBpm = 0;
         w.maxBpm = 0;
+        // create workout with no per-workout activity type; activity type is stored per-Session
         return sessionDao.insertWorkout(w);
     }
 
     public void finalizeWorkout(long workoutId, long endedAt, int avg, int max) {
         sessionDao.finalizeWorkout(workoutId, endedAt, avg, max);
+    }
+
+    // activity type is stored per-session; no updateWorkoutType
+
+    public void deleteWorkoutCascade(long workoutId) {
+        sessionDao.deleteWorkoutCascade(workoutId);
     }
 
     public java.util.List<Session> listSessionsForWorkout(long workoutId) {

@@ -11,7 +11,7 @@
         android:id="@+id/tvSessionsTitle"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/sessions_title"
+        android:text=""
         android:textSize="20sp"
         android:textStyle="bold"
         android:paddingBottom="8dp" />

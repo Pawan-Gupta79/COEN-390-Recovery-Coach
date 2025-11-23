@@ -18,4 +18,6 @@ public class Session {
     public int maxBpm;
     // Link to Workout; nullable when session is standalone
     public Long workoutId;
+    // Activity type for this session (e.g. Run, Jog, Cycling). Nullable; fallback to "Other" in UI.
+    public String type;
 }

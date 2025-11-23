@@ -90,6 +90,17 @@ public final class SessionController {
     }
 
     /**
+     * Cancel (discard) a workout: clear the in-memory currentWorkoutId if it matches.
+     * Callers should delete DB rows via repository on the DB executor.
+     */
+    public synchronized void cancelWorkout(Long wid) {
+        if (wid == null) return;
+        if (currentWorkoutId != null && currentWorkoutId.equals(wid)) {
+            currentWorkoutId = null;
+        }
+    }
+
+    /**
      * Synchronous variant that computes and persists the workout summary on the current thread.
      * Call this only from a background thread (e.g. the DB executor) to avoid blocking the UI.
      */
@@ -159,7 +170,7 @@ public final class SessionController {
 
         dbExecutor.execute(() -> {
             try {
-                long sessionId = repo.createSession(persistStart, currentWorkoutId);
+                long sessionId = repo.createSession(persistStart, currentWorkoutId, null);
                 for (Integer bpm : readingsCopy) {
                     Reading r = new Reading();
                     r.sessionId = sessionId;

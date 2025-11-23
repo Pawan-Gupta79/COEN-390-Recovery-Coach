@@ -12,6 +12,9 @@ public class WorkoutSummary {
     public int maxBpm;
     public String note;
     public int sessionCount;
+    // For workouts with exactly one session, repository will populate this with
+    // the session's activity type so the UI can show it in the list.
+    public String singleSessionType;
 
     public WorkoutSummary() {}
 }

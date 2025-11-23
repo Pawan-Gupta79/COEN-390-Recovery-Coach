@@ -57,11 +57,30 @@ public interface SessionDao {
     @Query("SELECT * FROM `Session` WHERE workoutId = :workoutId ORDER BY startedAt ASC")
     LiveData<List<Session>> getSessionsForWorkoutLive(long workoutId);
 
-    @Query("SELECT w.id AS id, w.startedAt AS startedAt, w.endedAt AS endedAt, w.avgBpm AS avgBpm, w.maxBpm AS maxBpm, w.note AS note, (SELECT COUNT(*) FROM `Session` s WHERE s.workoutId = w.id) AS sessionCount FROM `Workout` w ORDER BY startedAt DESC")
+    @Query("SELECT w.id AS id, w.startedAt AS startedAt, w.endedAt AS endedAt, w.avgBpm AS avgBpm, w.maxBpm AS maxBpm, w.note AS note, (SELECT COUNT(*) FROM `Session` s WHERE s.workoutId = w.id) AS sessionCount, (SELECT s.type FROM `Session` s WHERE s.workoutId = w.id LIMIT 1) AS singleSessionType FROM `Workout` w ORDER BY startedAt DESC")
     LiveData<List<WorkoutSummary>> getAllWorkoutSummariesLive();
 
     @Query("UPDATE `Workout` SET endedAt = :endedAt, avgBpm = :avg, maxBpm = :max WHERE id = :workoutId")
     int finalizeWorkout(long workoutId, long endedAt, int avg, int max);
+
+    // Delete cascade helpers for discarding an unsaved workout
+    @Query("DELETE FROM `Reading` WHERE sessionId IN (SELECT id FROM `Session` WHERE workoutId = :workoutId)")
+    int deleteReadingsForWorkout(long workoutId);
+
+    @Query("DELETE FROM `Session` WHERE workoutId = :workoutId")
+    int deleteSessionsForWorkout(long workoutId);
+
+    @Query("DELETE FROM `Workout` WHERE id = :workoutId")
+    int deleteWorkoutById(long workoutId);
+
+    // Note: activity `type` is stored per-Session (session.type), not on Workout.
+
+    @androidx.room.Transaction
+    default void deleteWorkoutCascade(long workoutId) {
+        deleteReadingsForWorkout(workoutId);
+        deleteSessionsForWorkout(workoutId);
+        deleteWorkoutById(workoutId);
+    }
 
     // ------- Reading CRUD -------
     @Insert

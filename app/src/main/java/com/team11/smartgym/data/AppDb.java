@@ -5,7 +5,7 @@ import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
 
-@Database(entities = {User.class, Session.class, Reading.class, Workout.class}, version = 3, exportSchema = true)
+@Database(entities = {User.class, Session.class, Reading.class, Workout.class}, version = 5, exportSchema = true)
 public abstract class AppDb extends RoomDatabase {
     public abstract SessionDao sessionDao();
     public abstract UserDao userDao();
