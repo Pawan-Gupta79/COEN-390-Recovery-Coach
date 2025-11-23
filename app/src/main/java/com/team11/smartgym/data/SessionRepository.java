@@ -1,5 +1,8 @@
 package com.team11.smartgym.data;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+
 import androidx.lifecycle.LiveData;
 
 import java.util.List;
@@ -11,9 +14,20 @@ import java.util.List;
 public class SessionRepository {
 
     private final SessionDao sessionDao;
+    private final Context appContext;
 
-    public SessionRepository(SessionDao dao) {
+    public SessionRepository(SessionDao dao, Context appContext) {
         this.sessionDao = dao;
+        this.appContext = appContext.getApplicationContext();
+    }
+
+    private int getCurrentUserId() {
+        try {
+            SharedPreferences prefs = appContext.getSharedPreferences("user_session", Context.MODE_PRIVATE);
+            return prefs.getInt("user_id", -1);
+        } catch (Exception e) {
+            return -1;
+        }
     }
 
     // ---------- Live list for UI ----------
@@ -23,7 +37,8 @@ public class SessionRepository {
 
     // ---------- Workouts ----------
     public LiveData<List<Workout>> getAllWorkoutsLive() {
-        return sessionDao.getAllWorkoutsLive();
+        int uid = getCurrentUserId();
+        return sessionDao.getAllWorkoutsLive(uid);
     }
 
     public androidx.lifecycle.LiveData<Workout> getWorkoutLiveById(long id) {
@@ -31,7 +46,8 @@ public class SessionRepository {
     }
 
     public LiveData<java.util.List<WorkoutSummary>> getAllWorkoutSummariesLive() {
-        return sessionDao.getAllWorkoutSummariesLive();
+        int uid = getCurrentUserId();
+        return sessionDao.getAllWorkoutSummariesLive(uid);
     }
     // ---------- Session lifecycle ----------
     public long createSession(long startMs) {
@@ -47,6 +63,7 @@ public class SessionRepository {
         s.maxBpm = 0;
         s.workoutId = workoutId;
         s.type = type;
+        s.userId = getCurrentUserId();
         return sessionDao.insertSession(s);
     }
 
@@ -62,6 +79,7 @@ public class SessionRepository {
         w.avgBpm = 0;
         w.maxBpm = 0;
         // create workout with no per-workout activity type; activity type is stored per-Session
+        w.userId = getCurrentUserId();
         return sessionDao.insertWorkout(w);
     }
 
