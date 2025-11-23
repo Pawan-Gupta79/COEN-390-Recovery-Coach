@@ -36,6 +36,7 @@ public class BleService extends Service {
     public static final String ACTION_START = "START";
     public static final String ACTION_CONNECT = "CONNECT";
     public static final String EXTRA_DEVICE = "DEVICE_ADDR";
+    public static final String ACTION_CANCEL_RECONNECT = "CANCEL_RECONNECT";
 
     private static final String PREF_LAST = "last_mac";
 
