@@ -65,6 +65,9 @@ public class BluetoothDebugScanActivity extends AppCompatActivity {
     private BluetoothAdapter bluetoothAdapter;
     private BluetoothLeScanner bluetoothLeScanner;
     private boolean isScanning = false;
+    // If user requested a scan but permissions or Bluetooth enabling were required,
+    // remember the intent so we can start scanning after the requirement is satisfied.
+    private boolean pendingScanRequested = false;
 
     private BluetoothGatt bluetoothGatt;
     private BluetoothGattCharacteristic hrCharacteristic;
@@ -120,7 +123,20 @@ public class BluetoothDebugScanActivity extends AppCompatActivity {
         deviceListAdapter = new DeviceListAdapter(this, foundDevices);
 
         btnScan.setOnClickListener(v -> {
-            if (!checkAndRequestPermissions()) return;
+            // If permissions are missing or Bluetooth is disabled, request them and
+            // remember that the user wants to start a scan.
+            if (!checkAndRequestPermissions()) {
+                pendingScanRequested = true;
+                return;
+            }
+
+            if (!bluetoothAdapter.isEnabled()) {
+                // Ask user to enable Bluetooth and start scan once enabled.
+                pendingScanRequested = true;
+                Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+                return;
+            }
 
             if (!isScanning) {
                 startScan();
@@ -188,6 +204,23 @@ public class BluetoothDebugScanActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_ENABLE_BT) {
+            if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
+                // Re-fetch scanner reference in case it wasn't available earlier
+                bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
+                if (pendingScanRequested) {
+                    pendingScanRequested = false;
+                    startScan();
+                }
+            } else {
+                Toast.makeText(this, "Bluetooth not enabled; cannot scan.", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
     private boolean checkAndRequestPermissions() {
         List<String> needed = new ArrayList<>();
 
@@ -211,6 +244,8 @@ public class BluetoothDebugScanActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this,
                     needed.toArray(new String[0]),
                     REQUEST_PERMISSIONS);
+            // remember user's intent to start a scan so we can continue after grant
+            pendingScanRequested = true;
             return false;
         }
         return true;
@@ -498,6 +533,19 @@ public class BluetoothDebugScanActivity extends AppCompatActivity {
             }
             if (!allGranted) {
                 Toast.makeText(this, "Permissions are required for BLE", Toast.LENGTH_SHORT).show();
+            } else {
+                // Permissions granted — if the user requested a scan, start it now
+                if (pendingScanRequested) {
+                    pendingScanRequested = false;
+                    // Ensure Bluetooth is enabled
+                    if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
+                        bluetoothLeScanner = bluetoothAdapter.getBluetoothLeScanner();
+                        startScan();
+                    } else {
+                        Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+                        startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
+                    }
+                }
             }
         }
     }
