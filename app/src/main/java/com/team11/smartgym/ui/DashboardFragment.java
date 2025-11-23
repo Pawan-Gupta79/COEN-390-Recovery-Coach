@@ -881,7 +881,12 @@ public class DashboardFragment extends Fragment {
         f.addAction(Bus.ACTION_STATE);
         f.addAction(Bus.ACTION_HR_UPDATE);
         f.addAction(Bus.ACTION_ERROR);
-        requireContext().registerReceiver(bus, f, Context.RECEIVER_EXPORTED);
+        ContextCompat.registerReceiver(
+                requireContext(),
+                bus,
+                f,
+                ContextCompat.RECEIVER_NOT_EXPORTED
+        );
     }
 
     @Override
