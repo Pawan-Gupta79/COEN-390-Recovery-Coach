@@ -193,7 +193,9 @@ public class DashboardFragment extends Fragment {
 
         // Disconnect (confirm)
         btnDisconnect.setOnClickListener(vw -> {
-            requireContext().stopService(new Intent(requireContext(), BleService.class));
+            try {
+                requireContext().stopService(new Intent(requireContext(), BleService.class));
+            } catch (Exception ignore) {}
             vm.setState(ConnectionState.DISCONNECTED);
 
             // RESET CHART
@@ -274,10 +276,15 @@ public class DashboardFragment extends Fragment {
     }
 
     private void startBleFlow() {
-        requireContext().startService(
-                new Intent(requireContext(), BleService.class)
-                        .setAction(BleService.ACTION_START)
-        );
+        try {
+            requireContext().startService(
+                    new Intent(requireContext(), BleService.class)
+                            .setAction(BleService.ACTION_START)
+            );
+        } catch (Exception e) {
+            if (getView() != null) Snackbar.make(getView(), "Failed to start BLE service: " + e.getClass().getSimpleName() + ": " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+            return;
+        }
         startActivity(new Intent(requireContext(), DeviceScanActivity.class));
     }
 
@@ -315,13 +322,74 @@ public class DashboardFragment extends Fragment {
         f.addAction(Bus.ACTION_STATE);
         f.addAction(Bus.ACTION_HR_UPDATE);
         f.addAction(Bus.ACTION_ERROR);
-        requireContext().registerReceiver(bus, f, Context.RECEIVER_EXPORTED);
+        try {
+            // On Android 14+ you must explicitly specify exported/not-exported when
+            // registering receivers that aren't only for system broadcasts.
+            // Use NOT_EXPORTED so the receiver cannot receive broadcasts from other apps.
+            requireContext().registerReceiver(bus, f, Context.RECEIVER_NOT_EXPORTED);
+        } catch (Exception e) {
+            // Log full stacktrace and save to cache so the user can share it without adb.
+            android.util.Log.e("DashboardFragment", "registerReceiver failed", e);
+            try {
+                java.io.File out = new java.io.File(requireContext().getCacheDir(), "ble_register_error.txt");
+                try (java.io.PrintWriter pw = new java.io.PrintWriter(new java.io.FileWriter(out, false))) {
+                    e.printStackTrace(pw);
+                }
+                // Read back file and show dialog so user can copy without adb
+                StringBuilder sb = new StringBuilder();
+                try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.FileReader(out))) {
+                    String line;
+                    int lines = 0;
+                    while ((line = br.readLine()) != null && lines < 1000) {
+                        sb.append(line).append('\n');
+                        lines++;
+                    }
+                }
+                String txt = sb.length() == 0 ? (e.toString()) : sb.toString();
+                if (getView() != null) {
+                    // Show in a scrollable dialog so you can copy the stacktrace on the phone
+                    android.widget.ScrollView sv = new android.widget.ScrollView(requireContext());
+                    android.widget.TextView tv = new android.widget.TextView(requireContext());
+                    int pad = (int) (16 * requireContext().getResources().getDisplayMetrics().density);
+                    tv.setPadding(pad, pad, pad, pad);
+                    tv.setTextSize(12);
+                    tv.setText(txt);
+                    sv.addView(tv);
+                    new com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                            .setTitle("BLE registration error")
+                            .setView(sv)
+                            .setPositiveButton("OK", null)
+                            .setNeutralButton("Save", (d, which) -> {
+                                // allow user to save to Downloads for easy transfer
+                                try {
+                                    java.io.File downloads = requireContext().getExternalFilesDir(null);
+                                    if (downloads != null) {
+                                        java.io.File out2 = new java.io.File(downloads, "ble_register_error.txt");
+                                        try (java.io.PrintWriter pw2 = new java.io.PrintWriter(new java.io.FileWriter(out2, false))) {
+                                            pw2.write(txt);
+                                        }
+                                        android.widget.Toast.makeText(requireContext(), "Saved to: " + out2.getAbsolutePath(), android.widget.Toast.LENGTH_LONG).show();
+                                    }
+                                } catch (Exception ignored) {}
+                            })
+                            .show();
+                } else {
+                    android.util.Log.i("DashboardFragment", "BLE register error saved to: " + out.getAbsolutePath());
+                }
+            } catch (Exception ioe) {
+                // Fallback to short message if writing fails
+                if (getView() != null) Snackbar.make(getView(), "Failed to register BLE receiver: " + e.getClass().getSimpleName() + ": " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+            }
+        }
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        requireContext().unregisterReceiver(bus);
+        try {
+            requireContext().unregisterReceiver(bus);
+        } catch (Exception ignore) {
+        }
     }
 }
 
