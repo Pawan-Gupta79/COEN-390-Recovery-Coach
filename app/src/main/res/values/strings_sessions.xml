@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="no_sessions">No sessions yet</string>
+    <string name="no_sessions_desc">Start a workout to see your history here.</string>
+</resources>

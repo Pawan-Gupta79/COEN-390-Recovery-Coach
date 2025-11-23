@@ -1,0 +1,101 @@
+Scrum meeting 1 - Sprint 3
+
+11 November, Teusday
+
+Started 05:08 PM
+Tasks assigning discussion
+
+William proposes doing DS-03
+alexander - proposes someone making code for fake hr data. 
+pawan - takes the task for fake hr data. 
+pawan proposes commenting code so everyone knows what is happening.
+proposed - someone needs to do the login code clean up and make them into one file. 
+
+How the UI should go :
+On second page- session -> Choose workout -> 
+On main page -> User clicks Start workout -> Workout and Session start simultaneously and user is said to choose a workout
+
+second page - just info on previous sessions and an overview button . 
+
+arnav- doing hardware 
+
+assignments- 
+arnav- doing hardware tasks, working on connection as well.
+pawan - proposes someone making code for fake hr data. 
+William proposes doing DS-03
+thaos - working on different logins. 
+alexander - ui changes to make app consistent
+Victor - work on scan
+
+status of hardware - HW-01, HW-02 working, need to work on connecting to the app. 
+Arnav proposes making a small simple app to connect to so know if it works, then integrate it into the main app. 
+
+need to set up logic to take in continous data until the user presses stop activity/stop workout. 
+
+discussion regarding hardware connection and Victor's tasks
+
+another task for arnav - fixing arduino code bug so victor can work on bluetooth conection. need till Wednesday, 11 November.
+once fixed, victor works on the bluetooth connection. 
+
+Victor - Works on test dosument , then on bluetooth code.
+
+Next meeting - 5 PM Thursday
+Meeting ended 05:44 PM.
+
+
+
+
+
+Scrum meeting 2 - Sprint 3
+
+13 November, Thursday
+
+Pawan-
+What I did : Fixed the code for Fakeheartrate generation to test the app on fake data till we have sensor connection established. I had to revert to workable code and run the app to check if the code needed any changes to avoid confusions later on. 
+Time spent: 5 hours
+Work till next scrum meeting: Test and Defination of Done documentation, more work if feasible. 
+Proposal for next scrum meeting time: Anytime next sunday on 16 November.
+
+William –
+What I did:
+Stability Fix PR – restored the app after UI-8 regressions (Sessions, Workout, Settings).
+DS-03 Secure Authentication – added hashed+salted password storage, unified login flow, account creation screen, and app-wide credential validation.
+DS-04 BLE Heart-Rate Improvements – added HR packet parsing, spike filtering, smoothing, null-handling, and full unit test coverage (all passing).
+Confirmed everything builds cleanly and works in-app.
+I cannot test with the real HR sensor, so another team member will need to validate real BLE readings later.
+
+Time spent: 12 hours total.
+Work until next scrum meeting: Begin DS-05 + DS-06:
+DS-05 (Reconnect System):
+05.1 Reconnect state machine (Idle/Reconnecting/Connected/Failed + backoff).
+05.2 Reconnect UI feedback (banners, status labels, retry prompts).
+05.3 Reconnect integration tests.
+DS-06 (Session Storage):
+06.1 Create session row on Start.
+06.2 Batch-insert HR samples.
+06.3 Flush + finalize on Stop.
+06.4 Schema validation / migrations.
+
+Next meeting: Sunday, Nov 16 — anytime works for me.
+
+Alexandre -
+What I did: Tested the changes to make sure they are error free, researched how to modify overview section and started working on it
+Time spent: 4 hours
+Work till next scrum meeting: fully implement overview feature
+
+
+Thomas -
+What I did: -corrected the duplicate database and made sure the code still functioned using the new combined database.
+            -removed duplicate menu bar icons
+Time spent: 8 hours
+Work till next scrum meeting: more complex sessions and workout logic.
+
+Victor 
+ScanDeviceAcitivty now scans real devices 
+-filter feature not impelemented and too many device can be discovered
+-also need to prevent connecting multiple device and only accept specific devices
+
+-Disconnect logic and reconnec having issues
+7h
+
+ 

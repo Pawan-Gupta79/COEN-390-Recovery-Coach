@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="top"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/switchAutoReconnect"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/auto_reconnect" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:text="@string/theme_follows_system" />
+
+    <!-- Login link -->
+    <TextView
+        android:id="@+id/login"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingVertical="12dp"
+        android:text="Login into Your Account"
+        android:textSize="16sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:background="@drawable/box_border"
+        android:drawablePadding="8dp" />
+
+    <!-- Edit profile -->
+    <TextView
+        android:id="@+id/editProfile"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingVertical="12dp"
+        android:text="Edit Profile"
+        android:textSize="16sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:background="@drawable/box_border"
+        android:drawablePadding="8dp" />
+
+    <!-- View profile -->
+    <TextView
+        android:id="@+id/viewProfile"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingVertical="12dp"
+        android:text="View Profile"
+        android:textSize="16sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:background="@drawable/box_border"
+        android:drawablePadding="8dp" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="?attr/colorOutline"
+        android:layout_marginVertical="20dp" />
+
+    <!-- Single Logout button (MaterialButton) -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnLogout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
+        android:paddingVertical="12dp"
+        android:text="@string/logout"
+        app:icon="@android:drawable/ic_lock_power_off"
+        app:iconGravity="textStart"
+        app:iconPadding="12dp"
+        style="@style/Widget.Material3.Button.OutlinedButton" />
+
+    <!-- Debug button -->
+    <Button
+        android:id="@+id/btnDebugLiveHr"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Open Live HR (Debug)"
+        android:visibility="gone"
+        android:layout_marginTop="12dp" />
+
+</LinearLayout>

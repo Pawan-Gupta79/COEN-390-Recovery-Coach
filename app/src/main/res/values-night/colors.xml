@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- SmartGym Dark Mode palette -->
+    <color name="rc_primary">#5DD3BD</color>
+    <color name="rc_onPrimary">#00382C</color>
+    <color name="rc_primaryContainer">#005244</color>
+    <color name="rc_onPrimaryContainer">#A6F2DE</color>
+
+    <color name="rc_secondary">#86CCFF</color>
+    <color name="rc_onSecondary">#003355</color>
+    <color name="rc_secondaryContainer">#004A7B</color>
+    <color name="rc_onSecondaryContainer">#BFE5FF</color>
+
+    <color name="rc_tertiary">#CFBCFF</color>
+    <color name="rc_onTertiary">#36275D</color>
+
+    <color name="rc_background">#0F1416</color>
+    <color name="rc_onBackground">#E1E1E6</color>
+    <color name="rc_surface">#111417</color>
+    <color name="rc_onSurface">#E1E1E6</color>
+
+    <color name="rc_error">#FFB4AB</color>
+    <color name="rc_onError">#690005</color>
+</resources>

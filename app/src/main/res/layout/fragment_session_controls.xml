@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="20dp">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <TextView
+            android:id="@+id/tvState"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Idle"
+            android:textStyle="bold"
+            android:textSize="20sp"
+            android:layout_marginBottom="12dp"/>
+
+        <Button
+            android:id="@+id/btnStartSession"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Start Session"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnStopSession"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Stop &amp; Save"
+            android:enabled="false"
+            android:layout_marginBottom="8dp"/>
+
+        <Button
+            android:id="@+id/btnFakeSample"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Add Fake BPM Sample"
+            android:enabled="false"
+            android:layout_marginBottom="12dp"/>
+
+        <TextView
+            android:id="@+id/tvLastSnapshot"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="No snapshot saved."
+            android:padding="8dp"
+            android:background="#EEEEEE"
+            android:layout_marginBottom="12dp"/>
+
+        <Button
+            android:id="@+id/btnOpenSnapshot"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Open Snapshot Viewer" />
+
+    </LinearLayout>
+</ScrollView>
