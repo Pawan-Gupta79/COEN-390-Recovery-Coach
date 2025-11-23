@@ -4,10 +4,12 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.navigation.Navigation;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -39,6 +41,11 @@ public class SessionsFragment extends Fragment {
         TextView tvTitle = v.findViewById(R.id.tvSessionsTitle);
         // This is the top-level Sessions screen (bottom-nav). Show "Workout" here.
         if (tvTitle != null) tvTitle.setText(R.string.workout_title);
+
+        Button btnOverview = v.findViewById(R.id.btn_overview);
+        btnOverview.setOnClickListener(view -> {
+            Navigation.findNavController(view).navigate(R.id.action_sessions_to_overview);
+        });
 
         // Adapter (we show workouts grouped list)
         adapter = new SessionsAdapter();
