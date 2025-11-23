@@ -230,9 +230,14 @@ public class DeviceScanActivity extends AppCompatActivity {
             Intent i = new Intent(this, BleService.class)
                     .setAction(BleService.ACTION_CONNECT)
                     .putExtra(BleService.EXTRA_DEVICE, ((ScanResult) item).getDevice().getAddress());
-            startService(i);
-            Snackbar.make(b.getRoot(), "Connecting to " + ((ScanResult) item).getDevice().getName(), Snackbar.LENGTH_SHORT).show();
-            finish();
+            try {
+                startService(i);
+                Snackbar.make(b.getRoot(), "Connecting to " + ((ScanResult) item).getDevice().getName(), Snackbar.LENGTH_SHORT).show();
+                finish();
+            } catch (Exception e) {
+                Log.e(TAG, "startService failed", e);
+                Snackbar.make(b.getRoot(), "Failed to start BLE service: " + e.getClass().getSimpleName() + ": " + e.getMessage(), Snackbar.LENGTH_LONG).show();
+            }
         });
         b.rvDevices.setLayoutManager(new LinearLayoutManager(this));
         b.rvDevices.setAdapter(adapter);
